@@ -1,5 +1,12 @@
+from extractor.config import ExtractorConfig
+from extractor.graph_ql import fetch_all
+from extractor.service import GithubService
+
+
 def main():
-    print("Hello from trabalho-pratico-grafos!")
+    config = ExtractorConfig()
+    service = GithubService(config)
+    print(fetch_all(service))
 
 
 if __name__ == "__main__":

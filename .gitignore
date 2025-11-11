@@ -1,4 +1,7 @@
-.venv
-.idea
+**/__pycache__/
+.venv/
+.idea/
+
+**/.env
 .ruff_cache
 .python-version
