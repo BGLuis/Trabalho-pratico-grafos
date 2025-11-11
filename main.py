@@ -1,5 +1,5 @@
 from extractor.config import ExtractorConfig
-from extractor.graph_ql import fetch_all
+from extractor.requests import fetch_all
 from extractor.service import GithubService
 
 
