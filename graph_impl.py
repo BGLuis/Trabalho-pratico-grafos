@@ -1,23 +1,47 @@
 from abc import ABC
 
 import abstract_graph
+from edge import Edge
 
 
 class Graph(abstract_graph.AbstractGraph, ABC):
     def getVertexCount(self) -> int:
-        pass
+        return self._num_vertex
 
     def getEdgeCount(self) -> int:
-        pass
+        total = 0
+        for v in self._vertex:
+            count = v.get_edge_count()
+            total += count
+
+        return total
 
     def hasEdge(self, u: int, v: int) -> bool:
-        pass
+        return self.getEdgeCount() > 0
 
     def addEdge(self, u: int, v: int):
-        pass
+        self._check_vertex_index(u)
+        self._check_vertex_index(v)
+
+        source_vertex = self._vertex[u]
+        target_vertex = self._vertex[v]
+
+        for edge in source_vertex.get_edges():
+            if edge.get_target() == target_vertex:
+                return
+        new_edge = Edge(source_vertex, target_vertex)
+        source_vertex.add_edge(new_edge)
 
     def removeEdge(self, u: int, v: int):
-        pass
+        self._check_vertex_index(u)
+        self._check_vertex_index(v)
+        source_vertex = self._vertex[u]
+        target_vertex = self._vertex[v]
+        edges = source_vertex.get_edges()
+        for edge in edges:
+            if edge.get_target() == target_vertex:
+                edges.remove(edge)
+                break
 
     def isSucessor(self, u: int, v: int) -> bool:
         pass
@@ -56,7 +80,7 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         pass
 
     def isEmptyGraph(self) -> bool:
-        pass
+        return self._num_vertex == 0
 
     def isCompleteGraph(self) -> bool:
-        pass
+        return self._num_vertex * 2 == self.getEdgeCount()

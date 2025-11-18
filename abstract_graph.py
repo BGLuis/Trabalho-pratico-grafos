@@ -1,20 +1,24 @@
 from abc import ABC, abstractmethod
+from typing import List
+from vertex import Vertex
 
 
 class AbstractGraph(ABC):
-    def __init__(self, num_vertices: int):
-        if num_vertices <= 0:
-            raise ValueError("O número de vértices deve ser maior que zero.")
-
-        self._num_vertices = num_vertices
-        self._vertex_labels = [None] * num_vertices
-        self._vertex_weights = [0.0] * num_vertices
+    def __init__(self):
+        self._vertex: List[Vertex] = []
+        self._num_vertex = len(self._vertex)
 
     def _check_vertex_index(self, v: int):
-        if not (0 <= v < self._num_vertices):
+        if not (0 <= v < self._num_vertex):
             raise IndexError(
-                f"Índice de vértice inválido: {v}. Deve estar entre 0 e {self._num_vertices - 1}."
+                f"Índice de vértice inválido: {v}. Deve estar entre 0 e {self._num_vertex - 1}."
             )
+
+    def setVertex(self, v: Vertex):
+        self._vertex.append(v)
+
+    def getVertex(self, i: int) -> Vertex:
+        return self._vertex[i]
 
     @abstractmethod
     def getVertexCount(self) -> int:
