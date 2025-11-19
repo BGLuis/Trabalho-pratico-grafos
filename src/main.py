@@ -1,3 +1,4 @@
+from src.adjacency_list_graph import AdjacencyMatrixGraph
 from src.graph_impl import Graph
 from vertex import Vertex
 
@@ -115,10 +116,14 @@ def main():
     # Grafo Completo
     print(f"Grafo é completo? {g.is_complete_graph()}")
 
-    print("Gerando arquivo csv")
+    print("Gerando arquivos csv")
     g.export_to_gephi("./tables/")
 
     print("\n=== TESTES FINALIZADOS ===")
+
+    m = AdjacencyMatrixGraph(len(g.vertices))
+    m.update_matriz_from_vertices(g.vertices)
+    m.print_matrix()
 
 
 if __name__ == "__main__":

@@ -21,12 +21,7 @@ class Graph(abstract_graph.AbstractGraph, ABC):
     def has_edge(self, u: int, v: int) -> bool:
         self._check_vertex_index(u)
         self._check_vertex_index(v)
-        edge_exist = False
-        for edge in self.get_vertex(u).get_edges():
-            if edge.get_target() == self.get_vertex(v):
-                edge_exist = True
-                break
-        return edge_exist
+        return self.get_vertex(u).has_target(self.get_vertex(v))
 
     def add_edge(self, u: int, v: int):
         if u == v or self.has_edge(u, v):

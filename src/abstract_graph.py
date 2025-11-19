@@ -98,3 +98,7 @@ class AbstractGraph(ABC):
     @abstractmethod
     def export_to_gephi(self, path: str):
         pass
+
+    @property
+    def vertices(self):
+        return self._vertices

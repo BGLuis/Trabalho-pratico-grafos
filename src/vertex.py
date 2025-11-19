@@ -23,6 +23,14 @@ class Vertex:
     def get_edge_count(self) -> int:
         return len(self._edges)
 
+    def has_target(self, target: Vertex) -> bool:
+        target_exist = False
+        for edge in self.get_edges():
+            if edge.get_target() == target:
+                target_exist = True
+                break
+        return target_exist
+
     def add_edge(self, new_edge):
         self._edges.append(new_edge)
 
