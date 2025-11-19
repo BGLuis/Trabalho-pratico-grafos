@@ -7,7 +7,6 @@ from extractor.config import ExtractorConfig
 from gql import Client, GraphQLRequest, gql
 from gql.transport.requests import RequestsHTTPTransport
 from pathlib import Path
-from threading import Thread
 
 from utils import extract_from_key
 
@@ -73,7 +72,6 @@ class GithubService:
         resolvers: List[PageResolver],
         get_config: Callable[[Dict[str, Any]], Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        threads: List[Thread] = list()
         for each in data:
             for resolver in resolvers:
                 last_key_part = resolver.key.split(".")[-1]
@@ -89,16 +87,9 @@ class GithubService:
                 def extract_data(data: Dict[str, Any]) -> Dict[str, Any]:
                     return extract_from_key(data, resolver.key)
 
-                def execute():
-                    each[last_key_part] = self.__fetch_paginated(
-                        resolver.filename, extract_data, config, current["nodes"]
-                    )
-
-                thread = Thread(target=execute)
-                thread.start()
-                threads.append(thread)
-        for thread in threads:
-            thread.join()
+                each[last_key_part] = self.__fetch_paginated(
+                    resolver.filename, extract_data, config, current["nodes"]
+                )
         return data
 
     def fetch_pull_requests(self):
