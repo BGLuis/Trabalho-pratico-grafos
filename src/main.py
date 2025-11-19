@@ -1,4 +1,5 @@
-from src.adjacency_list_graph import AdjacencyMatrixGraph
+from src.adjacency_list_graph import AdjacencyGraphList
+from src.adjacency_matrix_graph import AdjacencyMatrixGraph
 from src.graph_impl import Graph
 from vertex import Vertex
 
@@ -119,11 +120,22 @@ def main():
     print("Gerando arquivos csv")
     g.export_to_gephi("./tables/")
 
-    print("\n=== TESTES FINALIZADOS ===")
+    print("\n--- Teste da Matriz de Adjacência ---")
 
-    m = AdjacencyMatrixGraph(len(g.vertices))
+    m = AdjacencyMatrixGraph(g.get_vertex_count())
     m.update_matriz_from_vertices(g.vertices)
     m.print_matrix()
+
+    print("\n--- Teste da Lista de Adjacência ---")
+
+    adj_list = AdjacencyGraphList(g.get_vertex_count())
+
+    adj_list.set_adjacency_list(g.vertices)
+
+    # 3. Imprime
+    adj_list.print_list()
+
+    print("\n=== TESTES FINALIZADOS ===")
 
 
 if __name__ == "__main__":

@@ -3,29 +3,22 @@ from typing import List
 from src.vertex import Vertex
 
 
-class AdjacencyMatrixGraph:
+class AdjacencyGraphList:
     def __init__(self, num_vertices):
-        self._num_vertices = num_vertices
-        self.matriz = [[0.0] * num_vertices for _ in range(num_vertices)]
+        self._adjacency_list = [[] for _ in range(num_vertices)]
 
-    def print_matrix(self):
-        print("Matriz de Adjacência:")
-        for row in self.matriz:
-            print(row)
+    def set_adjacency_list(self, vertices: List[Vertex]):
+        for i in range(len(self._adjacency_list)):
+            adjacency_vertices = []
+            vertex = vertices[i]
+            edges = vertex.get_edges()
+            for edge in edges:
+                target = edge.get_target()
+                adjacency_vertices.append(target)
+            self._adjacency_list[i] = adjacency_vertices
 
-    def update_matriz_from_vertices(self, vertices: List[Vertex]):
-        if len(vertices) != self._num_vertices:
-            return
-        for i in range(self._num_vertices):
-            for j in range(self._num_vertices):
-                source_vertex = vertices[i]
-                target_vertex = vertices[j]
-                if source_vertex.has_target(target_vertex):
-                    weight = 1.0
-                    for edge in source_vertex.get_edges():
-                        if edge.get_target() == target_vertex:
-                            weight = edge.get_weight()
-                            break
-                    self.matriz[i][j] = weight
-                else:
-                    self.matriz[i][j] = 0.0
+    def print_list(self):
+        print("=== Lista de Adjacência ===")
+        for i, neighbors in enumerate(self._adjacency_list):
+            neighbor_labels = [v.get_vertex_label() for v in neighbors]
+            print(f"Vértice {i} -> {neighbor_labels}")

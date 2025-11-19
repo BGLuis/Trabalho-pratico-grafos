@@ -68,7 +68,7 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         count = 0
         target_vertex = self.get_vertex(u)
 
-        for v in range(len(self._vertices)):
+        for v in range(self.get_vertex_count()):
             vertex = self.get_vertex(v)
             for edge in vertex.get_edges():
                 if edge.get_target() == target_vertex:
@@ -110,7 +110,7 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         if self.is_empty_graph():
             connected = False
         else:
-            for i in range(len(self._vertices)):
+            for i in range(self.get_vertex_count()):
                 if (
                     self.get_vertex_in_degree(i) == 0
                     and self.get_vertex_out_degree(i) == 0
@@ -120,11 +120,12 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         return connected
 
     def is_empty_graph(self) -> bool:
-        return len(self._vertices) == 0
+        return self.get_vertex_count() == 0
 
     def is_complete_graph(self) -> bool:
         return (
-            len(self._vertices) * (len(self._vertices) - 1) / 2 == self.get_edge_count()
+            self.get_vertex_count() * (self.get_vertex_count() - 1) / 2
+            == self.get_edge_count()
         )
 
     def export_to_gephi(self, path: str):
