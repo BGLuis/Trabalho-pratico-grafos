@@ -94,3 +94,7 @@ class AbstractGraph(ABC):
     @abstractmethod
     def is_complete_graph(self) -> bool:
         pass
+
+    @abstractmethod
+    def export_to_gephi(self, path: str):
+        pass

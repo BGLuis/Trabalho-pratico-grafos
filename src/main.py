@@ -62,7 +62,7 @@ def main():
     # Pesos de Aresta
     # Aresta A->B (0->1)
     print(f"Peso aresta 0->1 inicial: {g.get_edge_weight(0, 1)}")
-    g.set_edge_weight(0, 1, 50.0)
+    g.set_edge_weight(0, 1, 5.0)
     print(f"Novo peso aresta 0->1: {g.get_edge_weight(0, 1)}\n")
 
     # 6. Testes Lógicos (Sucessor, Predecessor, Incidência)
@@ -114,6 +114,9 @@ def main():
 
     # Grafo Completo
     print(f"Grafo é completo? {g.is_complete_graph()}")
+
+    print("Gerando arquivo csv")
+    g.export_to_gephi("./tables/")
 
     print("\n=== TESTES FINALIZADOS ===")
 

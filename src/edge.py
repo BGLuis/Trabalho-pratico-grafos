@@ -3,7 +3,7 @@ from vertex import Vertex
 
 class Edge:
     def __init__(self, source: Vertex, target: Vertex):
-        self._weight = 0
+        self._weight = 1
         self._source = source
         self._target = target
 

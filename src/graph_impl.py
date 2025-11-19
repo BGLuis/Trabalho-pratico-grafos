@@ -29,11 +29,7 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         return edge_exist
 
     def add_edge(self, u: int, v: int):
-        self._check_vertex_index(u)
-        self._check_vertex_index(v)
-        if u == v:
-            return
-        if self.has_edge(u, v):
+        if u == v or self.has_edge(u, v):
             return
         new_edge = Edge(self._vertices[u], self._vertices[v])
         self._vertices[u].add_edge(new_edge)
@@ -56,19 +52,21 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         return self.has_edge(u, v)
 
     def is_divergent(self, u1: int, v1: int, u2: int, v2: int) -> bool:
-        if u1 != u2 or v1 == v2:
-            return False
-        return self.has_edge(u1, v1) and self.has_edge(u2, v2)
+        return (
+            not (u1 != u2 or v1 == v2)
+            and self.has_edge(u1, v1)
+            and self.has_edge(u2, v2)
+        )
 
     def is_convergent(self, u1: int, v1: int, u2: int, v2: int) -> bool:
-        if u1 == u2 or v1 != v2:
-            return False
-        return self.has_edge(u1, v1) and self.has_edge(u2, v2)
+        return (
+            not (u1 == u2 or v1 != v2)
+            and self.has_edge(u1, v1)
+            and self.has_edge(u2, v2)
+        )
 
     def is_incident(self, u: int, v: int, x: int) -> bool:
-        if not self.has_edge(u, v):
-            return False
-        return (x == u) or (x == v)
+        return self.has_edge(u, v) and ((x == u) or (x == v))
 
     def get_vertex_in_degree(self, u: int) -> int:
         self._check_vertex_index(u)
@@ -115,12 +113,15 @@ class Graph(abstract_graph.AbstractGraph, ABC):
     def is_connected(self) -> bool:
         connected = True
         if self.is_empty_graph():
-            return False
-
-        for i in range(len(self._vertices)):
-            if self.get_vertex_in_degree(i) == 0 and self.get_vertex_out_degree(i) == 0:
-                connected = False
-                break
+            connected = False
+        else:
+            for i in range(len(self._vertices)):
+                if (
+                    self.get_vertex_in_degree(i) == 0
+                    and self.get_vertex_out_degree(i) == 0
+                ):
+                    connected = False
+                    break
         return connected
 
     def is_empty_graph(self) -> bool:
@@ -130,3 +131,28 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         return (
             len(self._vertices) * (len(self._vertices) - 1) / 2 == self.get_edge_count()
         )
+
+    def export_to_gephi(self, path: str):
+        base_path = path.replace(".csv", "")
+        file_nodes = f"{base_path}_nodes.csv"
+        file_edges = f"{base_path}_edges.csv"
+
+        try:
+            with open(file_nodes, "w", encoding="utf-8") as f:
+                f.write("Id,Label,Weight\n")
+                for i, vertex in enumerate(self._vertices):
+                    safe_label = vertex.get_vertex_label().replace(",", " ")
+                    f.write(f"{i},{safe_label},{vertex.get_vertex_weight()}\n")
+            vertex_map = {v: i for i, v in enumerate(self._vertices)}
+            with open(file_edges, "w", encoding="utf-8") as f:
+                f.write("Source,Target,Weight,Type\n")
+                for source_idx, vertex in enumerate(self._vertices):
+                    for edge in vertex.get_edges():
+                        target_vertex = edge.get_target()
+                        target_idx = vertex_map.get(target_vertex)
+
+                        if target_idx is not None:
+                            w = edge.get_weight()
+                            f.write(f"{source_idx},{target_idx},{w},Directed\n")
+        except IOError as e:
+            print(f"Erro ao salvar os arquivos CSV: {e}")
