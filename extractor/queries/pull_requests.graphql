@@ -1,11 +1,11 @@
 query GetRepositoryPullRequests(
   $owner: String!
-  $repo: String!
+  $name: String!
   $cursor: String
 ) {
-  repository(owner: $owner, name: $repo) {
+  repository(owner: $owner, name: $name) {
     pullRequests(
-      first: 50
+      first: 100
       after: $cursor
       orderBy: { field: CREATED_AT, direction: ASC }
     ) {
@@ -13,67 +13,37 @@ query GetRepositoryPullRequests(
         hasNextPage
         endCursor
       }
+      totalCount
       nodes {
-        __typename
         id
         number
-        title
-        state
-        createdAt
-        updatedAt
-        closedAt
-        mergedAt
         author {
           login
         }
-        assignees(first: 10) {
+        mergedBy {
+          login
+        }
+        comments(first: 10) {
           nodes {
-            login
+            id
+            author {
+              login
+            }
+          }
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
           }
         }
-        labels(first: 20) {
+        reviews(first: 10) {
           nodes {
-            name
-            color
+            id
+            state
+            author {
+              login
+            }
           }
-        }
-        comments(first: 100) {
-          totalCount
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-        reviews(first: 100) {
-          totalCount
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-        reviewThreads(first: 100) {
-          totalCount
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-        timelineItems(
-          first: 100
-          itemTypes: [
-            CLOSED_EVENT
-            REOPENED_EVENT
-            LABELED_EVENT
-            UNLABELED_EVENT
-            ASSIGNED_EVENT
-            UNASSIGNED_EVENT
-            REFERENCED_EVENT
-            CROSS_REFERENCED_EVENT
-            REVIEW_REQUESTED_EVENT
-            READY_FOR_REVIEW_EVENT
-            MERGED_EVENT
-          ]
-        ) {
           totalCount
           pageInfo {
             hasNextPage
