@@ -40,10 +40,10 @@ class Graph(abstract_graph.AbstractGraph, ABC):
                 edges.remove(edge)
                 break
 
-    def is_sucessor(self, u: int, v: int) -> bool:
+    def is_successor(self, u: int, v: int) -> bool:
         return self.has_edge(v, u)
 
-    def is_predessor(self, u: int, v: int) -> bool:
+    def is_predecessor(self, u: int, v: int) -> bool:
         return self.has_edge(u, v)
 
     def is_divergent(self, u1: int, v1: int, u2: int, v2: int) -> bool:

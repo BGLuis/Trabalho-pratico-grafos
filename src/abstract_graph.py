@@ -40,11 +40,11 @@ class AbstractGraph(ABC):
         pass
 
     @abstractmethod
-    def is_sucessor(self, u: int, v: int) -> bool:
+    def is_successor(self, u: int, v: int) -> bool:
         pass
 
     @abstractmethod
-    def is_predessor(self, u: int, v: int) -> bool:
+    def is_predecessor(self, u: int, v: int) -> bool:
         pass
 
     @abstractmethod

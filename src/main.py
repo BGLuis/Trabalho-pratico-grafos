@@ -70,15 +70,15 @@ def main():
     # 6. Testes Lógicos (Sucessor, Predecessor, Incidência)
     print("--- Testes Lógicos ---")
     # A(0) -> B(1)
-    # B é sucessor de A? Sim (is_sucessor verifica se u é sucessor de v, ou seja v -> u)
-    # Na sua implementação: is_sucessor(u, v) retorna has_edge(v, u).
-    # Se perguntamos is_sucessor(1, 0) -> has_edge(0, 1) -> True (1 é sucessor de 0)
-    print(f"B(1) é sucessor de A(0)? {g.is_sucessor(1, 0)}")
+    # B é sucessor de A? Sim (is_successor verifica se u é sucessor de v, ou seja v -> u)
+    # Na sua implementação: is_successor(u, v) retorna has_edge(v, u).
+    # Se perguntamos is_successor(1, 0) -> has_edge(0, 1) -> True (1 é sucessor de 0)
+    print(f"B(1) é sucessor de A(0)? {g.is_successor(1, 0)}")
 
     # A é predecessor de B?
-    # is_predessor(u, v) retorna has_edge(u, v).
-    # is_predessor(0, 1) -> has_edge(0, 1) -> True.
-    print(f"A(0) é predecessor de B(1)? {g.is_predessor(0, 1)}")
+    # is_predecessor(u, v) retorna has_edge(u, v).
+    # is_predecessor(0, 1) -> has_edge(0, 1) -> True.
+    print(f"A(0) é predecessor de B(1)? {g.is_predecessor(0, 1)}")
 
     # Incidência: A aresta 0->1 incide em 0? Incide em 1? Incide em 3?
     print(f"Aresta 0->1 incide no vértice 0? {g.is_incident(0, 1, 0)}")
