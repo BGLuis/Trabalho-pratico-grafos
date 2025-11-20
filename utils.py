@@ -34,7 +34,7 @@ class CacheStore:
         cache_file = self.__cache_dir / f"{cache_key}.json"
         try:
             with open(cache_file, "w") as f:
-                json.dump(data, f, indent=2)
+                json.dump(data, f)
             log(f"Cached response: {cache_key}")
         except (IOError, TypeError) as e:
             log(f"Cache write error for {cache_key}: {e}")
