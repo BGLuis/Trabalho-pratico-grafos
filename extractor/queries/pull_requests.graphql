@@ -1,0 +1,56 @@
+query GetRepositoryPullRequests(
+  $owner: String!
+  $name: String!
+  $cursor: String
+) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(
+      first: 100
+      after: $cursor
+      orderBy: { field: CREATED_AT, direction: ASC }
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+      nodes {
+        id
+        number
+        author {
+          login
+        }
+        mergedBy {
+          login
+        }
+        comments(first: 10) {
+          nodes {
+            id
+            author {
+              login
+            }
+          }
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+        reviews(first: 10) {
+          nodes {
+            id
+            state
+            author {
+              login
+            }
+          }
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+}

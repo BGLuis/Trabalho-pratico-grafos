@@ -1,0 +1,26 @@
+query GetPullRequestReviews(
+  $owner: String!
+  $name: String!
+  $number: Int!
+  $missing: Int!
+  $cursor: String!
+) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviews(after: $cursor, first: $missing) {
+        nodes {
+          id
+          state
+          author {
+            login
+          }
+        }
+        totalCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}
