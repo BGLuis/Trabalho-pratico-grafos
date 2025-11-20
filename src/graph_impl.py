@@ -106,25 +106,41 @@ class Graph(abstract_graph.AbstractGraph, ABC):
         return edge_weight
 
     def is_connected(self) -> bool:
-        connected = True
         if self.is_empty_graph():
-            connected = False
-        else:
-            for i in range(self.get_vertex_count()):
-                if (
-                    self.get_vertex_in_degree(i) == 0
-                    and self.get_vertex_out_degree(i) == 0
-                ):
-                    connected = False
-                    break
-        return connected
+            return False
+
+        vertex_map = {v: i for i, v in enumerate(self._vertices)}
+        num_vertices = len(self._vertices)
+
+        adj_list = [set() for _ in range(num_vertices)]
+
+        for i, vertex in enumerate(self._vertices):
+            for edge in vertex.get_edges():
+                target = edge.get_target()
+                if target in vertex_map:
+                    target_idx = vertex_map[target]
+                    adj_list[i].add(target_idx)
+                    adj_list[target_idx].add(i)
+
+        visited = set()
+        queue = [0]
+        visited.add(0)
+
+        while queue:
+            u = queue.pop(0)
+            for v in adj_list[u]:
+                if v not in visited:
+                    visited.add(v)
+                    queue.append(v)
+
+        return len(visited) == num_vertices
 
     def is_empty_graph(self) -> bool:
         return self.get_vertex_count() == 0
 
     def is_complete_graph(self) -> bool:
         return (
-            self.get_vertex_count() * (self.get_vertex_count() - 1) / 2
+            self.get_vertex_count() * (self.get_vertex_count() - 1)
             == self.get_edge_count()
         )
 
