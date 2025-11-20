@@ -15,7 +15,7 @@ from time import sleep
 from pathlib import Path
 from datetime import datetime
 
-from utils import extract_from_key, log
+from utils import extract_from_key, log, CacheStore
 
 
 class Auth(AuthBase):
@@ -39,6 +39,7 @@ class GithubService:
         self.__transport = RequestsHTTPTransport(url=f"{config.base_url()}/graphql")
         self.__transport.auth = Auth(self.__config.auth_token())
         self.__client = Client(transport=self.__transport)
+        self.__cache = CacheStore(f"{config.repo_owner()}_{config.repo_name()}")
 
     def __load_query_from_file(self, path: PathLike) -> GraphQLRequest:
         with open(path, "r") as file:
@@ -69,11 +70,25 @@ class GithubService:
             sleep(3600)
 
     def __execute_query_with_retry(
-        self, log_tag: str, query: GraphQLRequest
+        self, log_tag: str, query: GraphQLRequest, use_cache: bool = True
     ) -> Dict[str, Any]:
+        cache_key = (
+            self.__cache.get_cache_key(query, query.variable_values)
+            if use_cache
+            else None
+        )
+
+        if use_cache and cache_key:
+            cached_result = self.__cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+
         while True:
             try:
-                return self.__client.execute(query)
+                result = self.__client.execute(query)
+                if use_cache and cache_key:
+                    self.__cache.set(cache_key, result)
+                return result
             except TransportServerError as e:
                 log(f"[{log_tag}] Server error: {e}")
                 sleep(0.5)
@@ -90,6 +105,9 @@ class GithubService:
 
     def __calculate_missing(self, total_count: int, current_count: int) -> int:
         return min(100, total_count - current_count)
+
+    def clear_cache(self) -> None:
+        self.__cache.clear()
 
     def __fetch_paginated(
         self,
