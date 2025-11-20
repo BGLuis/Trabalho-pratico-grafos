@@ -44,13 +44,13 @@ class GithubService:
         with open(path, "r") as file:
             return gql(file.read())
 
-    def __handle_rate_limit(self) -> None:
+    def __handle_rate_limit(self, log_tag: str) -> None:
         try:
             rate_limit_query = self.__load_query_from_file(
                 Path(__file__).parent / Path("queries/rate_limit.graphql")
             )
             rate_limit_response = self.__client.execute(rate_limit_query)
-            log(f"Rate limit response: {rate_limit_response}")
+            log(f"[{log_tag}] Rate limit response: {rate_limit_response}")
             reset_at = rate_limit_response.get("rateLimit", {}).get("resetAt")
 
             if reset_at:
@@ -58,31 +58,33 @@ class GithubService:
                 now = datetime.now(reset_time.tzinfo)
                 wait_seconds = max(0, (reset_time - now).total_seconds())
                 log(
-                    f"Rate limited at. Waiting until {reset_at} ({wait_seconds:.0f} seconds)"
+                    f"[{log_tag}] Rate limited at. Waiting until {reset_at} ({wait_seconds:.0f} seconds)"
                 )
                 sleep(wait_seconds + 1)
             else:
-                log("Rate limited. resetAt unavailable, waiting 1 hour")
+                log(f"[{log_tag}] Rate limited. resetAt unavailable, waiting 1 hour")
                 sleep(3600)
         except Exception as e:
-            log(f"Error fetching rate limit info: {e}. Waiting 1 hour")
+            log(f"[{log_tag}] Error fetching rate limit info: {e}. Waiting 1 hour")
             sleep(3600)
 
-    def __execute_query_with_retry(self, query: GraphQLRequest) -> Dict[str, Any]:
+    def __execute_query_with_retry(
+        self, log_tag: str, query: GraphQLRequest
+    ) -> Dict[str, Any]:
         while True:
             try:
                 return self.__client.execute(query)
             except TransportServerError as e:
-                log(f"Server error: {e}")
+                log(f"[{log_tag}] Server error: {e}")
                 sleep(0.5)
             except TransportConnectionFailed as e:
-                log(f"Connection failed: {e}")
+                log(f"[{log_tag}] Connection failed: {e}")
                 sleep(0.5)
             except TransportQueryError as e:
                 if e.errors is not None:
                     err = e.errors[0]
                     if "type" in err and err["type"] == "RATE_LIMIT":
-                        self.__handle_rate_limit()
+                        self.__handle_rate_limit(log_tag)
                         continue
                 raise e
 
@@ -109,7 +111,7 @@ class GithubService:
         result = initial_list
         while True:
             log(f"[{filename}] Executing query with variables: {query.variable_values}")
-            request = self.__execute_query_with_retry(query)
+            request = self.__execute_query_with_retry(filename, query)
             data = extract_data(request)
             result.extend(data["nodes"])
             page_info = data["pageInfo"]
