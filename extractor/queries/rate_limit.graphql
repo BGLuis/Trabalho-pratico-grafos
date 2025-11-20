@@ -1,0 +1,5 @@
+query GetRateLimit {
+  rateLimit {
+    resetAt
+  }
+}
