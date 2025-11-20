@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List
 
 from requests import PreparedRequest
 from requests.auth import AuthBase
-from extractor.config import ExtractorConfig
+from extractor.config import ExtractorConfig, TokenManager
 from gql import Client, GraphQLRequest, gql
 from gql.transport.requests import RequestsHTTPTransport
 from gql.transport.exceptions import (
@@ -13,7 +13,7 @@ from gql.transport.exceptions import (
 )
 from time import sleep
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from utils import extract_from_key, log, CacheStore
 
@@ -36,38 +36,56 @@ class PageResolver:
 class GithubService:
     def __init__(self, config: ExtractorConfig) -> None:
         self.__config = config
-        self.__transport = RequestsHTTPTransport(url=f"{config.base_url()}/graphql")
-        self.__transport.auth = Auth(self.__config.auth_token())
+        self.__base_url = config.base_url()
+        self.__token_manager = TokenManager(config.auth_tokens())
+        self.__transport = RequestsHTTPTransport(url=f"{self.__base_url}/graphql")
+        self.__transport.auth = Auth(self.__token_manager.get_current_token())
         self.__client = Client(transport=self.__transport)
         self.__cache = CacheStore(f"{config.repo_owner()}_{config.repo_name()}")
+
+    def __switch_to_token(self, token: str) -> None:
+        self.__transport.auth = Auth(token)
+        self.__client = Client(transport=self.__transport)
+        log("Switched client to new token")
 
     def __load_query_from_file(self, path: PathLike) -> GraphQLRequest:
         with open(path, "r") as file:
             return gql(file.read())
 
-    def __handle_rate_limit(self, log_tag: str) -> None:
+    def __handle_rate_limit(self, log_tag: str) -> bool:
+        current_token = self.__token_manager.get_current_token()
+
+        reset_at = None
         try:
             rate_limit_query = self.__load_query_from_file(
                 Path(__file__).parent / Path("queries/rate_limit.graphql")
             )
             rate_limit_response = self.__client.execute(rate_limit_query)
             log(f"[{log_tag}] Rate limit response: {rate_limit_response}")
-            reset_at = rate_limit_response.get("rateLimit", {}).get("resetAt")
+            reset_at_str = rate_limit_response.get("rateLimit", {}).get("resetAt")
 
-            if reset_at:
-                reset_time = datetime.fromisoformat(reset_at.replace("Z", "+00:00"))
-                now = datetime.now(reset_time.tzinfo)
-                wait_seconds = max(0, (reset_time - now).total_seconds())
-                log(
-                    f"[{log_tag}] Rate limited at. Waiting until {reset_at} ({wait_seconds:.0f} seconds)"
-                )
-                sleep(wait_seconds + 1)
-            else:
-                log(f"[{log_tag}] Rate limited. resetAt unavailable, waiting 1 hour")
-                sleep(3600)
+            if reset_at_str:
+                reset_at = datetime.fromisoformat(reset_at_str.replace("Z", "+00:00"))
         except Exception as e:
-            log(f"[{log_tag}] Error fetching rate limit info: {e}. Waiting 1 hour")
-            sleep(3600)
+            log(f"[{log_tag}] Error fetching rate limit info: {e}")
+            reset_at = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        self.__token_manager.mark_rate_limited(current_token, reset_at)
+        next_token, next_reset_at = self.__token_manager.get_next_available_token()
+
+        if next_reset_at is None:
+            log(f"[{log_tag}] Switching to another available token")
+            self.__switch_to_token(next_token)
+            return True
+        else:
+            now = datetime.now(timezone.utc)
+            wait_seconds = max(1, (next_reset_at - now).total_seconds())
+            log(
+                f"[{log_tag}] All tokens rate limited. Waiting {wait_seconds:.0f} seconds until {next_reset_at}"
+            )
+            self.__switch_to_token(next_token)
+            sleep(wait_seconds + 1)
+            return False
 
     def __execute_query_with_retry(
         self, log_tag: str, query: GraphQLRequest, use_cache: bool = True
@@ -99,7 +117,9 @@ class GithubService:
                 if e.errors is not None:
                     err = e.errors[0]
                     if "type" in err and err["type"] == "RATE_LIMIT":
-                        self.__handle_rate_limit(log_tag)
+                        switched = self.__handle_rate_limit(log_tag)
+                        if switched:
+                            log(f"[{log_tag}] Retrying with new token")
                         continue
                 raise e
 
