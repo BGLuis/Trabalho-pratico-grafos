@@ -6,9 +6,16 @@ from requests.auth import AuthBase
 from extractor.config import ExtractorConfig
 from gql import Client, GraphQLRequest, gql
 from gql.transport.requests import RequestsHTTPTransport
+from gql.transport.exceptions import (
+    TransportConnectionFailed,
+    TransportQueryError,
+    TransportServerError,
+)
+from time import sleep
 from pathlib import Path
+from datetime import datetime
 
-from utils import extract_from_key
+from utils import extract_from_key, log
 
 
 class Auth(AuthBase):
@@ -37,6 +44,51 @@ class GithubService:
         with open(path, "r") as file:
             return gql(file.read())
 
+    def __handle_rate_limit(self) -> None:
+        try:
+            rate_limit_query = self.__load_query_from_file(
+                Path(__file__).parent / Path("queries/rate_limit.graphql")
+            )
+            rate_limit_response = self.__client.execute(rate_limit_query)
+            log(f"Rate limit response: {rate_limit_response}")
+            reset_at = rate_limit_response.get("rateLimit", {}).get("resetAt")
+
+            if reset_at:
+                reset_time = datetime.fromisoformat(reset_at.replace("Z", "+00:00"))
+                now = datetime.now(reset_time.tzinfo)
+                wait_seconds = max(0, (reset_time - now).total_seconds())
+                log(
+                    f"Rate limited at. Waiting until {reset_at} ({wait_seconds:.0f} seconds)"
+                )
+                sleep(wait_seconds + 1)
+            else:
+                log("Rate limited. resetAt unavailable, waiting 1 hour")
+                sleep(3600)
+        except Exception as e:
+            log(f"Error fetching rate limit info: {e}. Waiting 1 hour")
+            sleep(3600)
+
+    def __execute_query_with_retry(self, query: GraphQLRequest) -> Dict[str, Any]:
+        while True:
+            try:
+                return self.__client.execute(query)
+            except TransportServerError as e:
+                log(f"Server error: {e}")
+                sleep(0.5)
+            except TransportConnectionFailed as e:
+                log(f"Connection failed: {e}")
+                sleep(0.5)
+            except TransportQueryError as e:
+                if e.errors is not None:
+                    err = e.errors[0]
+                    if "type" in err and err["type"] == "RATE_LIMIT":
+                        self.__handle_rate_limit()
+                        continue
+                raise e
+
+    def __calculate_missing(self, total_count: int, current_count: int) -> int:
+        return min(100, total_count - current_count)
+
     def __fetch_paginated(
         self,
         filename: str,
@@ -44,6 +96,7 @@ class GithubService:
         extra_variables: Dict[str, Any] | None = None,
         initial_list: List[Any] = [],
     ) -> List[Any]:
+        log(f"Fetching paginated data using {filename}.graphql")
         query = self.__load_query_from_file(
             Path(__file__).parent / Path(f"queries/{filename}.graphql")
         )
@@ -55,15 +108,18 @@ class GithubService:
             query.variable_values |= extra_variables
         result = initial_list
         while True:
-            request = self.__client.execute(query)
+            log(f"[{filename}] Executing query with variables: {query.variable_values}")
+            request = self.__execute_query_with_retry(query)
             data = extract_data(request)
             result.extend(data["nodes"])
             page_info = data["pageInfo"]
-            if not page_info["hasNextPage"]:
+            if page_info["endCursor"] is None:
                 break
             query.variable_values["cursor"] = page_info["endCursor"]
             if "missing" in query.variable_values:
-                query.variable_values["missing"] = data["totalCount"] - len(result)
+                query.variable_values["missing"] = self.__calculate_missing(
+                    data["totalCount"], len(result)
+                )
         return result
 
     def __resolve_missing(
@@ -82,7 +138,9 @@ class GithubService:
                     continue
                 config = get_config(each)
                 config["cursor"] = page_info["endCursor"]
-                config["missing"] = current["totalCount"] - len(current["nodes"])
+                config["missing"] = self.__calculate_missing(
+                    current["totalCount"], len(current["nodes"])
+                )
 
                 def extract_data(data: Dict[str, Any]) -> Dict[str, Any]:
                     return extract_from_key(data, resolver.key)
@@ -97,7 +155,8 @@ class GithubService:
             return request["repository"]["pullRequests"]
 
         data = self.__fetch_paginated("pull_requests", extract_data)
-        return self.__resolve_missing(
+        log(f"Fetched {len(data)} pull requests")
+        data = self.__resolve_missing(
             data,
             [
                 PageResolver(
@@ -107,13 +166,16 @@ class GithubService:
             ],
             lambda pr: {"number": pr["number"]},
         )
+        log("Resolved missing data for pull requests")
+        return data
 
     def fetch_issues(self):
         def extract_data(request: Dict[str, Any]) -> Dict[str, Any]:
             return request["repository"]["issues"]
 
         data = self.__fetch_paginated("issues", extract_data)
-        return self.__resolve_missing(
+        log(f"Fetched {len(data)} issues")
+        data = self.__resolve_missing(
             data,
             [
                 PageResolver("issue_comments", "repository.issue.comments"),
@@ -121,3 +183,5 @@ class GithubService:
             ],
             lambda issue: {"number": issue["number"]},
         )
+        log("Resolved missing data for issues")
+        return data
