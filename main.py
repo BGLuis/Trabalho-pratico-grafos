@@ -3,14 +3,13 @@ import json
 
 
 # def main():
-#     print("Hello from trabalho-pratico-grafos!")
-#     with open("starship.json", "r", encoding="utf-8") as f:
+#     with open("data/starship.json", "r", encoding="utf-8") as f:
 #         data = json.load(f)
 
 #     # Converte pullRequests em CSV
 #     if "pullRequests" in data:
 #         df_pr = pd.DataFrame(data["pullRequests"])
-#         df_pr.to_csv("pullRequests.csv", index=False, encoding="utf-8")
+#         df_pr.to_csv("data/pullRequests.csv", index=False, encoding="utf-8")
 
 #         # df = pd.DataFrame(
 #         #     {
@@ -28,7 +27,7 @@ import json
 #     # Converte issues em CSV
 #     if "issues" in data:
 #         df_issues = pd.DataFrame(data["issues"])
-#         df_issues.to_csv("issues.csv", index=False, encoding="utf-8")
+#         df_issues.to_csv("data/issues.csv", index=False, encoding="utf-8")
 
 #         df = pd.DataFrame(
 #             {
@@ -38,7 +37,7 @@ import json
 #             for issue in data["issues"]
 #         )
 
-#         df.to_csv("issues_relacoes.csv", index=False, encoding="utf-8")
+#         df.to_csv("data/issues_relacoes.csv", index=False, encoding="utf-8")
 
 #     print("Arquivos CSV gerados com sucesso!")
 
@@ -62,7 +61,7 @@ def extract_authors_from_issues(data):
         )
 
     df = pd.DataFrame(extracted_data)
-    df.to_csv("issues_authors.csv", index=False, encoding="utf-8")
+    df.to_csv("data/issues_authors.csv", index=False, encoding="utf-8")
 
 
 def extract_closed_issues(data):
@@ -83,11 +82,11 @@ def extract_closed_issues(data):
         )
 
     df = pd.DataFrame(extracted_data)
-    df.to_csv("closed_issues.csv", index=False, encoding="utf-8")
+    df.to_csv("data/closed_issues.csv", index=False, encoding="utf-8")
 
 
 if __name__ == "__main__":
-    with open("starship.json", "r", encoding="utf-8") as f:
+    with open("data/starship.json", "r", encoding="utf-8") as f:
         data = json.load(f)
     extract_authors_from_issues(data)
     extract_closed_issues(data)
