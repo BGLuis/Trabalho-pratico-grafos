@@ -128,6 +128,11 @@ class GithubService:
             query.variable_values |= extra_variables
         result = initial_list
         while True:
+            if (
+                "missing" in query.variable_values
+                and query.variable_values["missing"] <= 0
+            ):
+                return result
             log(f"[{filename}] Executing query with variables: {query.variable_values}")
             request = self.__execute_query_with_retry(filename, query)
             data = extract_data(request)
