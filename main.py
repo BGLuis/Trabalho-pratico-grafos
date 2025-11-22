@@ -30,7 +30,7 @@ def build_graph(input_file: str, output_dir: str):
     """Build graph from JSON file and export to Gephi format."""
     print(f"Building graph from {input_file}...")
     builder = GraphParser(AdjacencyMatrixGraph)
-    data = InteractionsDataFactory.build_comments_pull_requests_issues_graph(input_file)
+    data = InteractionsDataFactory.build_integrated_weighted_graph(input_file)
     g = builder.get_graph(data)
 
     count = g.get_vertex_count()

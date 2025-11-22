@@ -7,7 +7,7 @@ from lib.abstract_graph import AbstractGraph
 
 
 LoginExtractor = Callable[[Any], Optional[str]]
-InteractionExtractor = Callable[[Any], List[Tuple[str, str]]]
+InteractionExtractor = Callable[[Any], List[Tuple[str, str, Optional[float]]]]
 
 
 class ExtractorConfig:
@@ -55,20 +55,20 @@ class InteractionsDataFactory:
 
                 for extractor in extractor_config.interactions:
                     pairs = extractor(item)
-                    for source, target in pairs:
-                        interactions.add_interaction(source, target)
+                    for source, target, weight in pairs:
+                        interactions.add_interaction(source, target, weight)
 
         return interactions
 
     @staticmethod
     def build_closed_issues_graph(file_path: str) -> "InteractionsData":
-        """Build graph from issue closures."""
-
         def extract_author_login(issue: Dict) -> Optional[str]:
             author = issue.get("author")
             return author["login"] if author else None
 
-        def extract_close_interactions(issue: Dict) -> List[Tuple[str, str]]:
+        def extract_close_interactions(
+            issue: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
             interactions = []
             author = issue.get("author")
             if not author:
@@ -80,7 +80,7 @@ class InteractionsDataFactory:
                 actor = closed.get("actor")
                 if actor:
                     actor_login = actor["login"]
-                    interactions.append((author_login, actor_login))
+                    interactions.append((author_login, actor_login, None))
 
             return interactions
 
@@ -102,7 +102,9 @@ class InteractionsDataFactory:
             author = pr.get("author")
             return author["login"] if author else None
 
-        def extract_review_and_merge_interactions(pr: Dict) -> List[Tuple[str, str]]:
+        def extract_review_and_merge_interactions(
+            pr: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
             interactions = []
             author = pr.get("author")
             if not author:
@@ -114,12 +116,12 @@ class InteractionsDataFactory:
                 review_author = review.get("author")
                 if review_author:
                     reviewer_login = review_author["login"]
-                    interactions.append((author_login, reviewer_login))
+                    interactions.append((author_login, reviewer_login, None))
 
             merged_by = pr.get("mergedBy")
             if merged_by and merged_by.get("login"):
                 merger_login = merged_by["login"]
-                interactions.append((author_login, merger_login))
+                interactions.append((author_login, merger_login, None))
 
             return interactions
 
@@ -143,7 +145,9 @@ class InteractionsDataFactory:
             author = issue.get("author")
             return author["login"] if author else None
 
-        def extract_pr_comment_interactions(pr: Dict) -> List[Tuple[str, str]]:
+        def extract_pr_comment_interactions(
+            pr: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
             interactions = []
             author = pr.get("author")
             if not author:
@@ -154,11 +158,13 @@ class InteractionsDataFactory:
             for comment in comments:
                 if comment.get("author"):
                     commenter_login = comment["author"]["login"]
-                    interactions.append((commenter_login, author_login))
+                    interactions.append((commenter_login, author_login, None))
 
             return interactions
 
-        def extract_issue_comment_interactions(issue: Dict) -> List[Tuple[str, str]]:
+        def extract_issue_comment_interactions(
+            issue: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
             interactions = []
             author = issue.get("author")
             if not author:
@@ -169,7 +175,7 @@ class InteractionsDataFactory:
             for comment in comments:
                 if comment.get("author"):
                     commenter_login = comment["author"]["login"]
-                    interactions.append((commenter_login, author_login))
+                    interactions.append((commenter_login, author_login, None))
 
             return interactions
 
@@ -188,21 +194,132 @@ class InteractionsDataFactory:
 
         return InteractionsDataFactory.build_from_extractors(file_path, extractors)
 
+    @staticmethod
+    def build_integrated_weighted_graph(file_path: str) -> "InteractionsData":
+        def extract_pr_author_login(pr: Dict) -> Optional[str]:
+            author = pr.get("author")
+            return author["login"] if author else None
+
+        def extract_issue_author_login(issue: Dict) -> Optional[str]:
+            author = issue.get("author")
+            return author["login"] if author else None
+
+        def extract_pr_comment_interactions(
+            pr: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
+            interactions = []
+            author = pr.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            comments = pr.get("comments", [])
+            for comment in comments:
+                if comment.get("author"):
+                    commenter_login = comment["author"]["login"]
+                    interactions.append((commenter_login, author_login, 2.0))
+                    interactions.append((author_login, commenter_login, 3.0))
+
+            return interactions
+
+        def extract_issue_comment_interactions(
+            issue: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
+            interactions = []
+            author = issue.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            comments = issue.get("comments", [])
+            for comment in comments:
+                if comment.get("author"):
+                    commenter_login = comment["author"]["login"]
+                    interactions.append((commenter_login, author_login, 3.0))
+
+            return interactions
+
+        def extract_pr_review_interactions(
+            pr: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
+            interactions = []
+            author = pr.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            reviews = pr.get("reviews", [])
+            for review in reviews:
+                review_author = review.get("author")
+                if review_author:
+                    reviewer_login = review_author["login"]
+                    interactions.append((author_login, reviewer_login, 4.0))
+
+            return interactions
+
+        def extract_pr_merge_interactions(
+            pr: Dict,
+        ) -> List[Tuple[str, str, Optional[float]]]:
+            interactions = []
+            author = pr.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            merged_by = pr.get("mergedBy")
+            if merged_by and merged_by.get("login"):
+                merger_login = merged_by["login"]
+                interactions.append((author_login, merger_login, 5.0))
+
+            return interactions
+
+        extractors = [
+            ExtractorConfig(
+                key="pullRequests",
+                logins=[extract_pr_author_login],
+                interactions=[
+                    extract_pr_comment_interactions,
+                    extract_pr_review_interactions,
+                    extract_pr_merge_interactions,
+                ],
+            ),
+            ExtractorConfig(
+                key="issues",
+                logins=[extract_issue_author_login],
+                interactions=[extract_issue_comment_interactions],
+            ),
+        ]
+
+        return InteractionsDataFactory.build_from_extractors(file_path, extractors)
+
 
 class InteractionsData:
     def __init__(self):
         self.__logins: Set[str] = set()
         self.__interactions: Dict[str, Set[str]] = {}
+        self.__weights: Dict[Tuple[str, str], float] = {}
 
     def add_login(self, login: str):
         self.__logins.add(login)
 
-    def add_interaction(self, source: str, target: str):
+    def add_interaction(self, source: str, target: str, weight: Optional[float]):
         self.__logins.add(source)
+        if target == source:
+            return
         self.__logins.add(target)
         if source not in self.__interactions:
             self.__interactions[source] = set()
         self.__interactions[source].add(target)
+
+        if weight is not None:
+            edge_key = (source, target)
+            if edge_key in self.__weights:
+                self.__weights[edge_key] += weight
+            else:
+                self.__weights[edge_key] = weight
+
+    def get_weight(self, source: str, target: str) -> float:
+        return self.__weights.get((source, target), 1.0)
 
     @property
     def authors(self) -> Set[str]:
@@ -226,11 +343,12 @@ class GraphParser:
             self.__graph.set_vertex_weight(idx, 1.0)
         return self.__mapper[login_name]
 
-    def __add_interaction(self, source_login: str, target_login: str):
+    def __add_interaction(self, source_login: str, target_login: str, weight: float):
         try:
-            self.__graph.add_edge(
-                self.__get_vertex_idx(source_login), self.__get_vertex_idx(target_login)
-            )
+            source_idx = self.__get_vertex_idx(source_login)
+            target_idx = self.__get_vertex_idx(target_login)
+            self.__graph.add_edge(source_idx, target_idx)
+            self.__graph.set_edge_weight(source_idx, target_idx, weight)
         except IndexError:
             print(f"Erro ao adicionar aresta de {source_login} para {target_login}.")
 
@@ -240,5 +358,6 @@ class GraphParser:
         self.__graph = self.__graph_factory(len(authors))
         for source, targets in interactions.items():
             for target in targets:
-                self.__add_interaction(source, target)
+                weight = data.get_weight(source, target)
+                self.__add_interaction(source, target, weight)
         return self.__graph
