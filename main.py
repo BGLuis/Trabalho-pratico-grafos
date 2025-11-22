@@ -13,7 +13,6 @@ from utils import get_path_relative
 
 
 def fetch_data():
-    """Fetch data from GitHub API and save to JSON file."""
     config = ExtractorConfig()
     service = GithubService(config)
 
@@ -28,7 +27,6 @@ def fetch_data():
 
 
 def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"):
-    """Build graph from JSON file and export to Gephi format."""
     print(f"Building graph from {input_file} using '{graph_type}' method...")
 
     graph_methods = {
@@ -58,23 +56,18 @@ def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"
 
 
 def analyze_graph(input_dir: str, output_dir: str = "statistics"):
-    """Analyze graph and calculate statistics from Gephi CSV files."""
     input_path = Path(input_dir)
 
-    # Find the edges and vertices files
     edges_file = None
     vertices_file = None
 
     if input_path.is_dir():
-        # Look for CSV files in directory
         for file in input_path.glob("*_edges.csv"):
             edges_file = file
-            # Find corresponding vertices file
             base_name = file.name.replace("_edges.csv", "")
             vertices_file = input_path / f"{base_name}_vertexes.csv"
             break
     else:
-        # Assume input is base path without extension
         edges_file = Path(f"{input_path}_edges.csv")
         vertices_file = Path(f"{input_path}_vertexes.csv")
 
@@ -86,9 +79,9 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
     print("Analyzing graph from:")
     print(f"  Edges: {edges_file}")
     print(f"  Vertices: {vertices_file}")
+    print("  Using: AdjacencyListGraph representation")
 
-    # Load and analyze graph
-    stats = GraphStatistics(edges_file, vertices_file)
+    stats = GraphStatistics.from_csv(edges_file, vertices_file, graph_type="list")
 
     # Print summary
     stats.print_summary_statistics()
@@ -103,8 +96,8 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
 
     stats.export_metrics_to_csv(metrics_file)
 
-    print(f"\n✅ Metrics exported to: {metrics_file}")
-    print("📊 You can import this file into Gephi as node attributes!")
+    print(f"\nMetrics exported to: {metrics_file}")
+    print("You can import this file into Gephi as node attributes!")
 
 
 def main():
@@ -147,7 +140,6 @@ def main():
         "closed (issue closures)",
     )
 
-    # Analyze command
     analyze_parser = subparsers.add_parser(
         "analyze",
         help="Analyze graph and calculate centrality, structure, and community metrics",
