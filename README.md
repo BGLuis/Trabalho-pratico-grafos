@@ -75,16 +75,41 @@ This will save the data to `data/<repo-name>.json`.
 Build a graph from a JSON file and export it to Gephi format:
 
 ```bash
-# Using default paths (data/node.json → tables/)
+# Using default paths and graph type (data/node.json → tables/ using integrated graph)
 uv run main.py build
 
 # Using custom input and output paths
 uv run main.py build -i data/starship.json -o output/
+
+# Using a specific graph type
+uv run main.py build -t comments
+uv run main.py build -t reviews
+uv run main.py build -t closed
+uv run main.py build -t integrated  # default
 ```
 
 Options:
 - `-i, --input`: Input JSON file path (default: `data/node.json`)
 - `-o, --output`: Output directory for Gephi files (default: `tables/`)
+- `-t, --type`: Graph type to build (default: `integrated`)
+  - `integrated`: Weighted graph combining all interactions with different weights
+  - `comments`: Graph based on PR and issue comments
+  - `reviews`: Graph based on PR reviews and merges
+  - `closed`: Graph based on issue closures
+
+#### Graph Types Explained
+
+**Integrated (default)**: Combines all interaction types with weighted edges:
+- Comment on issue/PR: weight 2
+- Issue opened and commented: weight 3
+- PR review/approval: weight 4
+- PR merge: weight 5
+
+**Comments**: Focuses on comment interactions between users on issues and pull requests.
+
+**Reviews**: Focuses on code review and merge interactions on pull requests.
+
+**Closed**: Focuses on who closes issues opened by others.
 
 ### Help
 

@@ -26,18 +26,32 @@ def fetch_data():
     print(f"Data saved to {output_path}")
 
 
-def build_graph(input_file: str, output_dir: str):
+def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"):
     """Build graph from JSON file and export to Gephi format."""
-    print(f"Building graph from {input_file}...")
+    print(f"Building graph from {input_file} using '{graph_type}' method...")
+
+    graph_methods = {
+        "integrated": InteractionsDataFactory.build_integrated_weighted_graph,
+        "comments": InteractionsDataFactory.build_comments_pull_requests_issues_graph,
+        "reviews": InteractionsDataFactory.build_approve_merge_revision_pull_requests_graph,
+        "closed": InteractionsDataFactory.build_closed_issues_graph,
+    }
+
+    if graph_type not in graph_methods:
+        available = ", ".join(graph_methods.keys())
+        raise ValueError(
+            f"Invalid graph type '{graph_type}'. Available types: {available}"
+        )
+
     builder = GraphParser(AdjacencyMatrixGraph)
-    data = InteractionsDataFactory.build_integrated_weighted_graph(input_file)
+    data = graph_methods[graph_type](input_file)
     g = builder.get_graph(data)
 
     count = g.get_vertex_count()
-    print(f"Graph built with {count} vertices")
+    print(f"Graph built with {count} vertices and {g.get_edge_count()} edges")
 
-    output_file = Path(f"{output_dir}/{Path(input_file).stem}")
-    print(f"Exporting to {output_dir}...")
+    output_file = Path(f"{output_dir}/{Path(input_file).stem}/{graph_type}")
+    print(f"Exporting to {output_file}...")
     g.export_to_gephi(output_file)
     print("Export complete!")
 
@@ -70,13 +84,24 @@ def main():
         default="tables/",
         help="Output directory for Gephi files (default: tables/)",
     )
+    build_parser.add_argument(
+        "-t",
+        "--type",
+        dest="graph_type",
+        choices=["integrated", "comments", "reviews", "closed"],
+        default="integrated",
+        help="Graph type to build (default: integrated). "
+        "Options: integrated (weighted graph combining all interactions), "
+        "comments (PR/issue comments), reviews (PR reviews and merges), "
+        "closed (issue closures)",
+    )
 
     args = parser.parse_args()
 
     if args.command == "fetch":
         fetch_data()
     elif args.command == "build":
-        build_graph(args.input, args.output)
+        build_graph(args.input, args.output, args.graph_type)
     else:
         parser.print_help()
 
