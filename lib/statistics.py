@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from collections import deque, defaultdict
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lib.abstract_graph import AbstractGraph
 
@@ -11,12 +12,8 @@ class GraphStatistics:
     def __init__(self, graph: AbstractGraph):
         self.graph = graph
         self.nodes: Set[int] = set(range(graph.get_vertex_count()))
-        self.edges: Dict[int, Dict[int, float]] = defaultdict(
-            dict
-        )  # source -> {target: weight}
-        self.in_edges: Dict[int, Dict[int, float]] = defaultdict(
-            dict
-        )  # target -> {source: weight}
+        self.edges: Dict[int, Dict[int, float]] = defaultdict(dict)
+        self.in_edges: Dict[int, Dict[int, float]] = defaultdict(dict)
         self.node_weights: Dict[int, float] = {}
         self.vertex_labels: Dict[int, str] = {}
         self._load_from_graph()
@@ -143,44 +140,69 @@ class GraphStatistics:
 
         return centrality
 
-    def calculate_betweenness_centrality(self) -> Dict[int, float]:
+    def _calculate_betweenness_for_source(self, source: int) -> Dict[int, float]:
+        local_betweenness = {node: 0.0 for node in self.nodes}
+
+        stack = []
+        predecessors = {node: [] for node in self.nodes}
+        distances = {node: -1 for node in self.nodes}
+        distances[source] = 0
+        num_paths = {node: 0 for node in self.nodes}
+        num_paths[source] = 1
+
+        queue = deque([source])
+
+        while queue:
+            current = queue.popleft()
+            stack.append(current)
+
+            for neighbor in self._get_neighbors(current):
+                if distances[neighbor] < 0:
+                    distances[neighbor] = distances[current] + 1
+                    queue.append(neighbor)
+
+                if distances[neighbor] == distances[current] + 1:
+                    num_paths[neighbor] += num_paths[current]
+                    predecessors[neighbor].append(current)
+
+        dependency = {node: 0.0 for node in self.nodes}
+
+        while stack:
+            node = stack.pop()
+            for pred in predecessors[node]:
+                if num_paths[node] > 0:
+                    dependency[pred] += (num_paths[pred] / num_paths[node]) * (
+                        1 + dependency[node]
+                    )
+
+            if node != source:
+                local_betweenness[node] = dependency[node]
+
+        return local_betweenness
+
+    def calculate_betweenness_centrality(
+        self, parallel: bool = True
+    ) -> Dict[int, float]:
         betweenness = {node: 0.0 for node in self.nodes}
 
-        for source in self.nodes:
-            stack = []
-            predecessors = {node: [] for node in self.nodes}
-            distances = {node: -1 for node in self.nodes}
-            distances[source] = 0
-            num_paths = {node: 0 for node in self.nodes}
-            num_paths[source] = 1
+        if parallel and len(self.nodes) > 50:
+            with ThreadPoolExecutor() as executor:
+                futures = {
+                    executor.submit(
+                        self._calculate_betweenness_for_source, source
+                    ): source
+                    for source in self.nodes
+                }
 
-            queue = deque([source])
-
-            while queue:
-                current = queue.popleft()
-                stack.append(current)
-
-                for neighbor in self._get_neighbors(current):
-                    if distances[neighbor] < 0:
-                        distances[neighbor] = distances[current] + 1
-                        queue.append(neighbor)
-
-                    if distances[neighbor] == distances[current] + 1:
-                        num_paths[neighbor] += num_paths[current]
-                        predecessors[neighbor].append(current)
-
-            dependency = {node: 0.0 for node in self.nodes}
-
-            while stack:
-                node = stack.pop()
-                for pred in predecessors[node]:
-                    if num_paths[node] > 0:
-                        dependency[pred] += (num_paths[pred] / num_paths[node]) * (
-                            1 + dependency[node]
-                        )
-
-                if node != source:
-                    betweenness[node] += dependency[node]
+                for future in as_completed(futures):
+                    local_betweenness = future.result()
+                    for node, value in local_betweenness.items():
+                        betweenness[node] += value
+        else:
+            for source in self.nodes:
+                local_betweenness = self._calculate_betweenness_for_source(source)
+                for node, value in local_betweenness.items():
+                    betweenness[node] += value
 
         n = len(self.nodes)
         if n > 2:
@@ -190,26 +212,41 @@ class GraphStatistics:
 
         return betweenness
 
-    def calculate_closeness_centrality(self) -> Dict[int, float]:
+    def _calculate_closeness_for_node(self, node: int) -> Tuple[int, float]:
+        distances, _ = self._bfs_shortest_paths(node)
+
+        reachable_distances = [
+            d for d in distances.values() if d != float("inf") and d > 0
+        ]
+
+        if not reachable_distances:
+            return (node, 0.0)
+        else:
+            total_distance = sum(reachable_distances)
+            n_reachable = len(reachable_distances)
+
+            if total_distance > 0:
+                return (node, n_reachable / total_distance)
+            else:
+                return (node, 0.0)
+
+    def calculate_closeness_centrality(self, parallel: bool = True) -> Dict[int, float]:
         closeness = {}
 
-        for node in self.nodes:
-            distances, _ = self._bfs_shortest_paths(node)
+        if parallel and len(self.nodes) > 50:
+            with ThreadPoolExecutor() as executor:
+                futures = [
+                    executor.submit(self._calculate_closeness_for_node, node)
+                    for node in self.nodes
+                ]
 
-            reachable_distances = [
-                d for d in distances.values() if d != float("inf") and d > 0
-            ]
-
-            if not reachable_distances:
-                closeness[node] = 0.0
-            else:
-                total_distance = sum(reachable_distances)
-                n_reachable = len(reachable_distances)
-
-                if total_distance > 0:
-                    closeness[node] = n_reachable / total_distance
-                else:
-                    closeness[node] = 0.0
+                for future in as_completed(futures):
+                    node, value = future.result()
+                    closeness[node] = value
+        else:
+            for node in self.nodes:
+                node_id, value = self._calculate_closeness_for_node(node)
+                closeness[node_id] = value
 
         return closeness
 
@@ -332,7 +369,6 @@ class GraphStatistics:
         for source in self.edges:
             for target in self.edges[source]:
                 edge_list.append((degrees[source], degrees[target]))
-                # Add reverse for undirected
                 edge_list.append((degrees[target], degrees[source]))
 
         if not edge_list:
@@ -362,77 +398,104 @@ class GraphStatistics:
 
         node_degree = {}
         for node in self.nodes:
-            degree = 0.0
-            for target, weight in self.edges.get(node, {}).items():
-                degree += weight
-            for source, weight in self.in_edges.get(node, {}).items():
-                degree += weight
+            degree = sum(self.edges.get(node, {}).values())
+            degree += sum(self.in_edges.get(node, {}).values())
             node_degree[node] = degree
+
+        neighbors_cache = {
+            node: self._get_all_neighbors_undirected(node) for node in self.nodes
+        }
+
+        comm_degree = {node: node_degree[node] for node in self.nodes}
 
         improved = True
         iterations = 0
         max_iterations = 100
+        min_improvement = 1e-6
 
         while improved and iterations < max_iterations:
+            print(f"Community detection iteration {iterations + 1}...")
             improved = False
             iterations += 1
+            moves_count = 0
 
-            for node in self.nodes:
+            nodes_list = list(self.nodes)
+
+            for node in nodes_list:
                 current_comm = community[node]
                 best_comm = current_comm
                 best_delta = 0.0
 
-                neighbor_comms = set()
-                for neighbor in self._get_all_neighbors_undirected(node):
-                    neighbor_comms.add(community[neighbor])
+                neighbor_comms = {
+                    community[neighbor] for neighbor in neighbors_cache[node]
+                }
 
                 for target_comm in neighbor_comms:
                     if target_comm == current_comm:
                         continue
 
-                    delta = self._modularity_gain(
-                        node, target_comm, community, node_degree, total_weight
+                    delta = self._modularity_gain_optimized(
+                        node,
+                        current_comm,
+                        target_comm,
+                        community,
+                        node_degree,
+                        comm_degree,
+                        total_weight,
+                        neighbors_cache,
                     )
 
                     if delta > best_delta:
                         best_delta = delta
                         best_comm = target_comm
 
-                if best_comm != current_comm and best_delta > 0:
+                if best_comm != current_comm and best_delta > min_improvement:
+                    comm_degree[current_comm] -= node_degree[node]
+                    comm_degree[best_comm] = (
+                        comm_degree.get(best_comm, 0) + node_degree[node]
+                    )
+
                     community[node] = best_comm
                     improved = True
+                    moves_count += 1
+
+            if moves_count > 0:
+                print(f"Iteration {iterations}: {moves_count} nodes moved")
+
+        print(f"Community detection converged after {iterations} iterations")
 
         unique_comms = sorted(set(community.values()))
         comm_map = {old: new for new, old in enumerate(unique_comms)}
         return {node: comm_map[comm] for node, comm in community.items()}
 
-    def _modularity_gain(
+    def _modularity_gain_optimized(
         self,
         node: int,
+        current_comm: int,
         target_comm: int,
         community: Dict[int, int],
         node_degree: Dict[int, float],
+        comm_degree: Dict[int, float],
         total_weight: float,
+        neighbors_cache: Dict[int, Set[int]],
     ) -> float:
+        if total_weight == 0:
+            return 0.0
+
         k_i_in = 0.0
-        for neighbor in self._get_all_neighbors_undirected(node):
+        for neighbor in neighbors_cache[node]:
             if community[neighbor] == target_comm:
                 weight = self.edges.get(node, {}).get(neighbor, 0.0)
                 weight += self.edges.get(neighbor, {}).get(node, 0.0)
                 k_i_in += weight
 
-        sigma_tot = sum(
-            node_degree[n] for n in self.nodes if community[n] == target_comm
-        )
-
+        sigma_tot = comm_degree.get(target_comm, 0.0)
         k_i = node_degree[node]
 
-        if total_weight > 0:
-            delta = (k_i_in / total_weight) - (
-                sigma_tot * k_i / (2 * total_weight * total_weight)
-            )
-            return delta
-        return 0.0
+        delta = (k_i_in / total_weight) - (
+            sigma_tot * k_i / (2 * total_weight * total_weight)
+        )
+        return delta
 
     def calculate_modularity(self) -> float:
         communities = self.detect_communities()
@@ -483,23 +546,77 @@ class GraphStatistics:
 
         return bridging
 
-    def calculate_all_metrics(self) -> Dict[str, Dict[int, float]]:
-        print("Calculating centrality metrics...")
-        metrics = {
-            "degree_centrality": self.calculate_degree_centrality(),
-            "in_degree_centrality": self.calculate_in_degree_centrality(),
-            "out_degree_centrality": self.calculate_out_degree_centrality(),
-            "betweenness_centrality": self.calculate_betweenness_centrality(),
-            "closeness_centrality": self.calculate_closeness_centrality(),
-            "pagerank": self.calculate_pagerank(),
-            "eigenvector_centrality": self.calculate_eigenvector_centrality(),
-            "clustering_coefficient": self.calculate_clustering_coefficient(),
+    def calculate_all_metrics(
+        self, parallel: bool = True
+    ) -> Dict[str, Dict[int, float]]:
+        print("Calculating all metrics in parallel...")
+
+        if not parallel or len(self.nodes) < 50:
+            print("  Using sequential mode for small graph...")
+            metrics = {
+                "degree_centrality": self.calculate_degree_centrality(),
+                "in_degree_centrality": self.calculate_in_degree_centrality(),
+                "out_degree_centrality": self.calculate_out_degree_centrality(),
+                "betweenness_centrality": self.calculate_betweenness_centrality(
+                    parallel=False
+                ),
+                "closeness_centrality": self.calculate_closeness_centrality(
+                    parallel=False
+                ),
+                "pagerank": self.calculate_pagerank(),
+                "eigenvector_centrality": self.calculate_eigenvector_centrality(),
+                "clustering_coefficient": self.calculate_clustering_coefficient(),
+            }
+
+            print("  Calculating community metrics...")
+            metrics["community"] = self.detect_communities()
+            metrics["bridging_node"] = self.identify_bridging_nodes()
+
+            return metrics
+
+        metrics = {}
+
+        metric_functions = {
+            "degree_centrality": self.calculate_degree_centrality,
+            "in_degree_centrality": self.calculate_in_degree_centrality,
+            "out_degree_centrality": self.calculate_out_degree_centrality,
+            "pagerank": self.calculate_pagerank,
+            "eigenvector_centrality": self.calculate_eigenvector_centrality,
+            "clustering_coefficient": self.calculate_clustering_coefficient,
         }
 
-        print("Calculating community metrics...")
+        print("  Running independent metrics in parallel...")
+        with ThreadPoolExecutor() as executor:
+            future_to_metric = {
+                executor.submit(func): name for name, func in metric_functions.items()
+            }
+
+            for future in as_completed(future_to_metric):
+                metric_name = future_to_metric[future]
+                try:
+                    metrics[metric_name] = future.result()
+                    print(f"    ✓ {metric_name}")
+                except Exception as e:
+                    print(f"    ✗ {metric_name} failed: {e}")
+                    metrics[metric_name] = {node: 0.0 for node in self.nodes}
+
+        print("  Running betweenness centrality (parallelized)...")
+        metrics["betweenness_centrality"] = self.calculate_betweenness_centrality(
+            parallel=True
+        )
+
+        print("  Running closeness centrality (parallelized)...")
+        metrics["closeness_centrality"] = self.calculate_closeness_centrality(
+            parallel=True
+        )
+
+        print("  Running community detection...")
         metrics["community"] = self.detect_communities()
+
+        print("  Identifying bridging nodes...")
         metrics["bridging_node"] = self.identify_bridging_nodes()
 
+        print("✓ All metrics calculated!")
         return metrics
 
     def export_metrics_to_csv(self, output_file: Path):
@@ -520,7 +637,6 @@ class GraphStatistics:
 
                 for metric_name, metric_values in metrics.items():
                     value = metric_values.get(node, 0.0)
-                    # Convert boolean to int for bridging nodes
                     if isinstance(value, bool):
                         value = 1 if value else 0
                     row[metric_name] = value
