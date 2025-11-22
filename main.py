@@ -3,6 +3,7 @@ from extractor.requests import fetch_all
 from extractor.service import GithubService
 from lib.implementations import AdjacencyMatrixGraph
 from lib.parser import GraphParser, InteractionsDataFactory
+from lib.statistics import GraphStatistics
 
 import argparse
 from json import dump
@@ -56,6 +57,56 @@ def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"
     print("Export complete!")
 
 
+def analyze_graph(input_dir: str, output_dir: str = "statistics"):
+    """Analyze graph and calculate statistics from Gephi CSV files."""
+    input_path = Path(input_dir)
+
+    # Find the edges and vertices files
+    edges_file = None
+    vertices_file = None
+
+    if input_path.is_dir():
+        # Look for CSV files in directory
+        for file in input_path.glob("*_edges.csv"):
+            edges_file = file
+            # Find corresponding vertices file
+            base_name = file.name.replace("_edges.csv", "")
+            vertices_file = input_path / f"{base_name}_vertexes.csv"
+            break
+    else:
+        # Assume input is base path without extension
+        edges_file = Path(f"{input_path}_edges.csv")
+        vertices_file = Path(f"{input_path}_vertexes.csv")
+
+    if not edges_file or not edges_file.exists():
+        raise FileNotFoundError(f"Edges file not found in {input_dir}")
+    if not vertices_file or not vertices_file.exists():
+        raise FileNotFoundError(f"Vertices file not found: {vertices_file}")
+
+    print("Analyzing graph from:")
+    print(f"  Edges: {edges_file}")
+    print(f"  Vertices: {vertices_file}")
+
+    # Load and analyze graph
+    stats = GraphStatistics(edges_file, vertices_file)
+
+    # Print summary
+    stats.print_summary_statistics()
+
+    # Export metrics
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Use the base name from input
+    base_name = edges_file.stem.replace("_edges", "")
+    metrics_file = output_path / f"{base_name}_metrics.csv"
+
+    stats.export_metrics_to_csv(metrics_file)
+
+    print(f"\n✅ Metrics exported to: {metrics_file}")
+    print("📊 You can import this file into Gephi as node attributes!")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="GitHub data extractor and graph builder"
@@ -96,12 +147,32 @@ def main():
         "closed (issue closures)",
     )
 
+    # Analyze command
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help="Analyze graph and calculate centrality, structure, and community metrics",
+    )
+    analyze_parser.add_argument(
+        "-i",
+        "--input",
+        required=True,
+        help="Input graph directory or base path (e.g., tables/node/integrated)",
+    )
+    analyze_parser.add_argument(
+        "-o",
+        "--output",
+        default="statistics",
+        help="Output directory for statistics (default: statistics)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "fetch":
         fetch_data()
     elif args.command == "build":
         build_graph(args.input, args.output, args.graph_type)
+    elif args.command == "analyze":
+        analyze_graph(args.input, args.output)
     else:
         parser.print_help()
 

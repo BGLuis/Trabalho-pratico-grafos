@@ -111,6 +111,56 @@ Options:
 
 **Closed**: Focuses on who closes issues opened by others.
 
+### Analyze Graph Metrics
+
+Calculate centrality, structure, and community metrics from generated graphs:
+
+```bash
+# Analyze graph from tables directory
+uv run main.py analyze -i tables/node/integrated
+
+# Analyze with custom output directory
+uv run main.py analyze -i tables/node/integrated -o my_statistics
+```
+
+Options:
+- `-i, --input`: Input graph directory or base path (required)
+- `-o, --output`: Output directory for statistics (default: `statistics`)
+
+#### Metrics Calculated
+
+**Centrality Metrics:**
+- Degree Centrality: Number of direct connections (participation level)
+- In-Degree Centrality: Who receives interactions
+- Out-Degree Centrality: Who initiates interactions
+- Betweenness Centrality: Bridge nodes between groups
+- Closeness Centrality: Proximity to all other nodes
+- PageRank: Influence measure (weighted by connection importance)
+- Eigenvector Centrality: Influence based on connections
+
+**Structure and Cohesion Metrics:**
+- Density: Proportion of existing vs. possible connections
+- Clustering Coefficient: Tendency to form clusters
+- Assortativity: Whether highly connected nodes connect with each other
+
+**Community Metrics:**
+- Community Detection: Identify groups working together
+- Modularity: Quality of community structure
+- Bridging Nodes: Users connecting different communities
+
+#### Using Metrics in Gephi
+
+The generated CSV file (`statistics/{graph_name}_metrics.csv`) can be imported into Gephi:
+
+1. Open your graph in Gephi
+2. Go to Data Laboratory
+3. Click "Import Spreadsheet"
+4. Select the metrics CSV file
+5. Choose "Append to existing workspace" and "Nodes table"
+6. Map the "Id" column to node IDs
+
+All metrics will be added as node attributes, ready for visualization and analysis!
+
 ### Help
 
 View available commands and options:
@@ -119,4 +169,5 @@ View available commands and options:
 uv run main.py --help
 uv run main.py fetch --help
 uv run main.py build --help
+uv run main.py analyze --help
 ```
