@@ -23,7 +23,7 @@ class GraphBuilder:
         if not self.graph.has_edge(source_idx, target_idx):
             self.graph.add_edge(source_idx, target_idx)
 
-    def build_comments_pull_requests_graph(self, file_path: str) -> None:
+    def build_comments_pull_requests_issues_graph(self, file_path: str) -> None:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -38,6 +38,18 @@ class GraphBuilder:
             author_login = pull_request["author"]["login"]
             target_idx = self._get_vertex_idx(author_login)
             comments = pull_request.get("comments", [])
+            for comment in comments:
+                if comment.get("author"):
+                    commenter_login = comment["author"]["login"]
+                    self._add_interaction(commenter_login, target_idx)
+
+        issues = data.get("issues", [])
+        for issue in issues:
+            if not issue.get("author"):
+                continue
+            author_login = issue["author"]["login"]
+            target_idx = self._get_vertex_idx(author_login)
+            comments = issue.get("comments", [])
             for comment in comments:
                 if comment.get("author"):
                     commenter_login = comment["author"]["login"]
