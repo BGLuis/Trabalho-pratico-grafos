@@ -616,7 +616,7 @@ class GraphStatistics:
         print("  Identifying bridging nodes...")
         metrics["bridging_node"] = self.identify_bridging_nodes()
 
-        print("✓ All metrics calculated!")
+        print("All metrics calculated!")
         return metrics
 
     def export_metrics_to_csv(self, output_file: Path):

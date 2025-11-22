@@ -83,14 +83,11 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
 
     stats = GraphStatistics.from_csv(edges_file, vertices_file, graph_type="list")
 
-    # Print summary
     stats.print_summary_statistics()
 
-    # Export metrics
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Use the base name from input
     base_name = edges_file.stem.replace("_edges", "")
     metrics_file = output_path / f"{base_name}_metrics.csv"
 

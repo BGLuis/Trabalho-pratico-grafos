@@ -356,6 +356,8 @@ class GraphParser:
         authors = data.authors
         interactions = data.interactions
         self.__graph = self.__graph_factory(len(authors))
+        for author in authors:
+            self.__get_vertex_idx(author)
         for source, targets in interactions.items():
             for target in targets:
                 weight = data.get_weight(source, target)
