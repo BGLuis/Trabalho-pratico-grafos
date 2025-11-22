@@ -1,7 +1,35 @@
-from typing import List, TYPE_CHECKING
+from typing import List
 
-if TYPE_CHECKING:
-    from src.edge import Edge
+
+class Edge:
+    def __init__(self, source: Vertex, target: Vertex):
+        self._weight = 1
+        self._source: Vertex = source
+        self._target: Vertex = target
+
+    def get_weight(self) -> float:
+        return self._weight
+
+    def get_source(self) -> Vertex:
+        return self._source
+
+    def get_target(self) -> Vertex:
+        return self._target
+
+    def set_weight(self, new_weight: float):
+        if new_weight < 0:
+            raise ValueError("O peso da aresta não pode ser negativo neste modelo.")
+        self._weight = new_weight
+
+    def set_source(self, source: Vertex):
+        if source.get_vertex_weight() < 0:
+            raise ValueError("O índice da origem deve ser não-negativo.")
+        self._source = source
+
+    def set_target(self, target: Vertex):
+        if target.get_vertex_weight() < 0:
+            raise ValueError("O índice do destino deve ser não-negativo.")
+        self._target = target
 
 
 class Vertex:

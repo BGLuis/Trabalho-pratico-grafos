@@ -1,12 +1,13 @@
 from abc import ABC
 from typing import Dict
-
-import abstract_graph
-from edge import Edge
+from pathlib import Path
 import networkx as nx
 
+from lib.abstract_graph import AbstractGraph
+from lib.common import Edge
 
-class Graph(abstract_graph.AbstractGraph, ABC):
+
+class Graph(AbstractGraph, ABC):
     def __init__(self):
         super().__init__()
 
@@ -147,13 +148,16 @@ class Graph(abstract_graph.AbstractGraph, ABC):
             == self.get_edge_count()
         )
 
-    def export_to_gephi(self, path: str):
-        base_path = path.replace(".csv", "")
-        file_nodes = f"{base_path}_nodes.csv"
-        file_edges = f"{base_path}_edges.csv"
+    def export_to_gephi(self, path: Path):
+        base_path = path.with_suffix(".csv")
+        file_vertexes = base_path.with_stem(f"{base_path.stem}_vertexes")
+        file_edges = base_path.with_stem(f"{base_path.stem}_edges")
+
+        if not base_path.parent.exists():
+            base_path.parent.mkdir(parents=True)
 
         try:
-            with open(file_nodes, "w", encoding="utf-8") as f:
+            with open(file_vertexes, "w", encoding="utf-8") as f:
                 f.write("Id,Label,Weight\n")
                 for i, vertex in enumerate(self._vertices):
                     safe_label = vertex.get_vertex_label().replace(",", " ")

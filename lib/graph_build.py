@@ -1,6 +1,6 @@
 import json
-from src.graph_impl import Graph
-from src.vertex import Vertex
+from lib.graph_impl import Graph
+from lib.common import Vertex
 
 
 class GraphBuilder:

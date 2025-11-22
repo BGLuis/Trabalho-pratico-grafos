@@ -46,6 +46,10 @@ class CacheStore:
             log(f"Cleared cache directory: {self.__cache_dir}")
 
 
+def get_path_relative(path: Path) -> Path:
+    return Path(__file__).parent / path
+
+
 def extract_from_key(data: Dict[str, Any], key: str) -> Any:
     parts = key.split(".")
     current = data

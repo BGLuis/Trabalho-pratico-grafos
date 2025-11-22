@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
-from vertex import Vertex
+
+from lib.common import Vertex
 
 
 class AbstractGraph(ABC):

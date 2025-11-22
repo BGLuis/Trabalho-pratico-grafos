@@ -1,6 +1,6 @@
 from typing import List
 
-from src.vertex import Vertex
+from lib.common import Vertex
 
 
 class AdjacencyMatrixGraph:
