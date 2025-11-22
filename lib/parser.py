@@ -1,96 +1,192 @@
 import json
 from collections.abc import Callable
-from typing import Dict, Set
+from os import PathLike
+from typing import Dict, Set, List, Tuple, Any, Optional, Union
 
 from lib.abstract_graph import AbstractGraph
 
 
+LoginExtractor = Callable[[Any], Optional[str]]
+InteractionExtractor = Callable[[Any], List[Tuple[str, str]]]
+
+
+class ExtractorConfig:
+    def __init__(
+        self,
+        key: str,
+        logins: List[LoginExtractor],
+        interactions: List[InteractionExtractor],
+    ):
+        self.__key = key
+        self.__logins = logins
+        self.__interactions = interactions
+
+    @property
+    def key(self) -> str:
+        return self.__key
+
+    @property
+    def logins(self) -> List[LoginExtractor]:
+        return self.__logins
+
+    @property
+    def interactions(self) -> List[InteractionExtractor]:
+        return self.__interactions
+
+
 class InteractionsDataFactory:
     @staticmethod
-    def create() -> "InteractionsData":
-        return InteractionsData()
-
-    @staticmethod
-    def build_closed_issues_graph(file_path: str) -> InteractionsData:
+    def build_from_extractors(
+        file_path: Union[str, PathLike],
+        extractors: List[ExtractorConfig],
+    ) -> "InteractionsData":
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         interactions = InteractionsData()
-        issues = data.get("issues", [])
-        for issue in issues:
-            author = issue.get("author", None)
-            if not author:
-                continue
-            author_login = author["login"]
-            closes = issue.get("timelineItems", [])
-            for closed in closes:
-                actor = closed.get("actor", None)
-                if not actor:
-                    continue
-                actor_login = actor["login"]
-                interactions.add_interaction(author_login, actor_login)
+
+        for extractor_config in extractors:
+            items = data.get(extractor_config.key, [])
+            for item in items:
+                for extractor in extractor_config.logins:
+                    login = extractor(item)
+                    if login:
+                        interactions.add_login(login)
+
+                for extractor in extractor_config.interactions:
+                    pairs = extractor(item)
+                    for source, target in pairs:
+                        interactions.add_interaction(source, target)
 
         return interactions
+
+    @staticmethod
+    def build_closed_issues_graph(file_path: str) -> "InteractionsData":
+        """Build graph from issue closures."""
+
+        def extract_author_login(issue: Dict) -> Optional[str]:
+            author = issue.get("author")
+            return author["login"] if author else None
+
+        def extract_close_interactions(issue: Dict) -> List[Tuple[str, str]]:
+            interactions = []
+            author = issue.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            closes = issue.get("timelineItems", [])
+            for closed in closes:
+                actor = closed.get("actor")
+                if actor:
+                    actor_login = actor["login"]
+                    interactions.append((author_login, actor_login))
+
+            return interactions
+
+        extractors = [
+            ExtractorConfig(
+                key="issues",
+                logins=[extract_author_login],
+                interactions=[extract_close_interactions],
+            )
+        ]
+
+        return InteractionsDataFactory.build_from_extractors(file_path, extractors)
 
     @staticmethod
     def build_approve_merge_revision_pull_requests_graph(
         file_path: str,
-    ) -> InteractionsData:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    ) -> "InteractionsData":
+        def extract_author_login(pr: Dict) -> Optional[str]:
+            author = pr.get("author")
+            return author["login"] if author else None
 
-        interactions = InteractionsData()
-        pull_requests = data.get("pullRequests", [])
-        for pull_request in pull_requests:
-            pull_request_author = pull_request.get("author", None)
-            if not pull_request_author:
-                continue
-            author_login = pull_request_author["login"]
-            reviews = pull_request.get("reviews", [])
+        def extract_review_and_merge_interactions(pr: Dict) -> List[Tuple[str, str]]:
+            interactions = []
+            author = pr.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            reviews = pr.get("reviews", [])
             for review in reviews:
-                review_author = review.get("author", None)
-                if not review_author:
-                    continue
-                reviewer_login = review["author"]["login"]
-                interactions.add_interaction(author_login, reviewer_login)
-            merged_by = pull_request.get("mergedBy")
-            if merged_by and merged_by.get("login", None):
-                merger_login = merged_by["login"]
-                interactions.add_interaction(author_login, merger_login)
+                review_author = review.get("author")
+                if review_author:
+                    reviewer_login = review_author["login"]
+                    interactions.append((author_login, reviewer_login))
 
-        return interactions
+            merged_by = pr.get("mergedBy")
+            if merged_by and merged_by.get("login"):
+                merger_login = merged_by["login"]
+                interactions.append((author_login, merger_login))
+
+            return interactions
+
+        extractors = [
+            ExtractorConfig(
+                key="pullRequests",
+                logins=[extract_author_login],
+                interactions=[extract_review_and_merge_interactions],
+            )
+        ]
+
+        return InteractionsDataFactory.build_from_extractors(file_path, extractors)
 
     @staticmethod
-    def build_comments_pull_requests_issues_graph(file_path: str) -> InteractionsData:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    def build_comments_pull_requests_issues_graph(file_path: str) -> "InteractionsData":
+        def extract_pr_author_login(pr: Dict) -> Optional[str]:
+            author = pr.get("author")
+            return author["login"] if author else None
 
-        interactions = InteractionsData()
+        def extract_issue_author_login(issue: Dict) -> Optional[str]:
+            author = issue.get("author")
+            return author["login"] if author else None
 
-        pull_requests = data.get("pullRequests", [])
-        for pull_request in pull_requests:
-            if not pull_request.get("author"):
-                continue
-            author_login = pull_request["author"]["login"]
-            comments = pull_request.get("comments", [])
+        def extract_pr_comment_interactions(pr: Dict) -> List[Tuple[str, str]]:
+            interactions = []
+            author = pr.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
+            comments = pr.get("comments", [])
             for comment in comments:
                 if comment.get("author"):
                     commenter_login = comment["author"]["login"]
-                    interactions.add_interaction(commenter_login, author_login)
+                    interactions.append((commenter_login, author_login))
 
-        issues = data.get("issues", [])
-        for issue in issues:
-            if not issue.get("author"):
-                continue
-            author_login = issue["author"]["login"]
-            interactions.add_login(author_login)
+            return interactions
+
+        def extract_issue_comment_interactions(issue: Dict) -> List[Tuple[str, str]]:
+            interactions = []
+            author = issue.get("author")
+            if not author:
+                return interactions
+            author_login = author["login"]
+
             comments = issue.get("comments", [])
             for comment in comments:
                 if comment.get("author"):
                     commenter_login = comment["author"]["login"]
-                    interactions.add_interaction(commenter_login, author_login)
+                    interactions.append((commenter_login, author_login))
 
-        return interactions
+            return interactions
+
+        extractors = [
+            ExtractorConfig(
+                key="pullRequests",
+                logins=[extract_pr_author_login],
+                interactions=[extract_pr_comment_interactions],
+            ),
+            ExtractorConfig(
+                key="issues",
+                logins=[extract_issue_author_login],
+                interactions=[extract_issue_comment_interactions],
+            ),
+        ]
+
+        return InteractionsDataFactory.build_from_extractors(file_path, extractors)
 
 
 class InteractionsData:
