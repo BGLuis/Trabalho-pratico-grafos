@@ -1,24 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List
-
-from lib.common import Vertex
+from os import PathLike
 
 
 class AbstractGraph(ABC):
     def __init__(self):
-        self._vertices: List[Vertex] = []
-
-    def _check_vertex_index(self, v: int):
-        if not (0 <= v < len(self._vertices)):
-            raise IndexError(
-                f"Índice de vértice inválido: {v}. Deve estar entre 0 e {len(self._vertices) - 1}."
-            )
-
-    def set_vertex(self, v: Vertex):
-        self._vertices.append(v)
-
-    def get_vertex(self, i: int) -> Vertex:
-        return self._vertices[i]
+        pass
 
     @abstractmethod
     def get_vertex_count(self) -> int:
@@ -77,6 +63,14 @@ class AbstractGraph(ABC):
         pass
 
     @abstractmethod
+    def get_vertex_label(self, v: int) -> str:
+        pass
+
+    @abstractmethod
+    def set_vertex_label(self, v: int, label: str):
+        pass
+
+    @abstractmethod
     def set_edge_weight(self, u: int, v: int, w: float):
         pass
 
@@ -97,9 +91,5 @@ class AbstractGraph(ABC):
         pass
 
     @abstractmethod
-    def export_to_gephi(self, path: str):
+    def export_to_gephi(self, path: PathLike):
         pass
-
-    @property
-    def vertices(self):
-        return self._vertices

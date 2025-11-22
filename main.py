@@ -1,7 +1,8 @@
 from extractor.config import ExtractorConfig
 from extractor.requests import fetch_all
 from extractor.service import GithubService
-from lib.graph_build import GraphBuilder
+from lib.implementations import AdjacencyMatrixGraph
+from lib.parser import GraphParser, InteractionsDataFactory
 
 import argparse
 from json import dump
@@ -28,9 +29,9 @@ def fetch_data():
 def build_graph(input_file: str, output_dir: str):
     """Build graph from JSON file and export to Gephi format."""
     print(f"Building graph from {input_file}...")
-    builder = GraphBuilder()
-    builder.build_comments_pull_requests_issues_graph(input_file)
-    g = builder.get_graph()
+    builder = GraphParser(AdjacencyMatrixGraph)
+    data = InteractionsDataFactory.build_comments_pull_requests_issues_graph(input_file)
+    g = builder.get_graph(data)
 
     count = g.get_vertex_count()
     print(f"Graph built with {count} vertices")
