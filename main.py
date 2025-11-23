@@ -104,7 +104,7 @@ def analyze_graph(
     else:
         stats = {"manual": ManualGraphStatistics(graph)}
 
-    for key, stat in stats:
+    for key, stat in stats.items():
         output_path = Path(f"{output_dir}/{key}/{base_name}")
         output_path.mkdir(parents=True, exist_ok=True)
 
