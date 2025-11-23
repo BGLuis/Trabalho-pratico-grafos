@@ -94,21 +94,26 @@ def analyze_graph(
 
     graph = GraphFactory.from_gephi(edges_file, vertices_file, graph_type="list")
 
-    if strategy == "networkx":
-        stats = NetworkXGraphStatistics(graph)
+    if strategy == "both":
+        stats = {
+            "manual": ManualGraphStatistics(graph),
+            "networkx": NetworkXGraphStatistics(graph),
+        }
+    elif strategy == "networkx":
+        stats = {"networkx": NetworkXGraphStatistics(graph)}
     else:
-        stats = ManualGraphStatistics(graph)
+        stats = {"manual": ManualGraphStatistics(graph)}
 
-    output_path = Path(f"{output_dir}/{strategy}/{base_name}")
-    output_path.mkdir(parents=True, exist_ok=True)
+    for key, stat in stats:
+        output_path = Path(f"{output_dir}/{key}/{base_name}")
+        output_path.mkdir(parents=True, exist_ok=True)
 
-    nodes_metrics_file = output_path / f"{process_type}/nodes.csv"
-    graph_metrics_file = output_path / f"{process_type}/graph.json"
+        nodes_metrics_file = output_path / f"{process_type}/nodes.csv"
+        graph_metrics_file = output_path / f"{process_type}/graph.json"
 
-    stats.export_metrics_to_csv(nodes_metrics_file, graph_metrics_file)
+        stat.export_metrics_to_csv(nodes_metrics_file, graph_metrics_file)
 
-    log(f"\nMetrics exported to: {nodes_metrics_file}")
-    log("You can import this file into Gephi as node attributes!")
+        log(f"\nMetrics exported to: {nodes_metrics_file}")
 
 
 def main():
@@ -170,7 +175,7 @@ def main():
     analyze_parser.add_argument(
         "-s",
         "--strategy",
-        choices=["manual", "networkx"],
+        choices=["both", "manual", "networkx"],
         default="manual",
         help="Statistics calculation strategy: manual (custom algorithms) or networkx (library wrapper)",
     )
