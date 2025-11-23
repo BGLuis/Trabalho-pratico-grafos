@@ -147,6 +147,15 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         return local_betweenness
 
     def calculate_betweenness_centrality(self) -> Dict[int, float]:
+        cache_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=self.__get_deterministic_cache_key(),
+            metric_name="betweenness_centrality",
+        )
+        cached = self.__cache_store.get(cache_key)
+        if cached is not None:
+            log("Using cached betweenness centrality.")
+            return {int(k): v for k, v in cached.items()}
+
         betweenness = {node: 0.0 for node in self.nodes}
 
         with ThreadPoolExecutor() as executor:
@@ -166,6 +175,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
             for node in betweenness:
                 betweenness[node] *= scale
 
+        self.__cache_store.set(cache_key, betweenness)
         return betweenness
 
     def _calculate_closeness_for_node(self, node: int) -> Tuple[int, float]:

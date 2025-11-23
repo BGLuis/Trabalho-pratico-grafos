@@ -45,7 +45,18 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
         return nx.out_degree_centrality(self._nx_graph)
 
     def calculate_betweenness_centrality(self) -> Dict[int, float]:
-        return nx.betweenness_centrality(self._nx_graph, weight="weight")
+        cached_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=self.__get_deterministic_cache_key(),
+            metric_name="betweenness_centrality",
+        )
+        cached = self.__cache_store.get(cached_key)
+        if cached is not None:
+            log("Using cached betweenness centrality.")
+            return {int(k): v for k, v in cached.items()}
+
+        betweenness = nx.betweenness_centrality(self._nx_graph, weight="weight")
+        self.__cache_store.set(cached_key, betweenness)
+        return betweenness
 
     def calculate_closeness_centrality(self) -> Dict[int, float]:
         return nx.closeness_centrality(self._nx_graph)
