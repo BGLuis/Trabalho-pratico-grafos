@@ -91,7 +91,7 @@ class GithubService:
         self, log_tag: str, query: GraphQLRequest, use_cache: bool = True
     ) -> Dict[str, Any]:
         cache_key = (
-            self.__cache.get_cache_key(query, query.variable_values)
+            self.__cache.get_request_cache_key(query, query.variable_values)
             if use_cache
             else None
         )

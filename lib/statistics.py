@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lib.abstract_graph import AbstractGraph
 from lib.abstract_statistics import AbstractGraphStatistics
-from utils import log
+from utils import log, submit_parallel_processes, CacheStore
 
 
 class ManualGraphStatistics(AbstractGraphStatistics):
@@ -18,7 +18,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         self.in_edges: Dict[int, Dict[int, float]] = defaultdict(dict)
         self.node_weights: Dict[int, float] = {}
         self.vertex_labels: Dict[int, str] = {}
-        self._metrics_cache: Dict[str, Dict[int, float]] = {}
+        self.__cache_store = CacheStore("manual/statistics")
         self._load_from_graph()
 
     def _load_from_graph(self):
@@ -145,27 +145,17 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         return local_betweenness
 
-    def calculate_betweenness_centrality(
-        self, parallel: bool = True
-    ) -> Dict[int, float]:
+    def calculate_betweenness_centrality(self) -> Dict[int, float]:
         betweenness = {node: 0.0 for node in self.nodes}
 
-        if parallel and len(self.nodes) > 50:
-            with ThreadPoolExecutor() as executor:
-                futures = {
-                    executor.submit(
-                        self._calculate_betweenness_for_source, source
-                    ): source
-                    for source in self.nodes
-                }
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(self._calculate_betweenness_for_source, source): source
+                for source in self.nodes
+            }
 
-                for future in as_completed(futures):
-                    local_betweenness = future.result()
-                    for node, value in local_betweenness.items():
-                        betweenness[node] += value
-        else:
-            for source in self.nodes:
-                local_betweenness = self._calculate_betweenness_for_source(source)
+            for future in as_completed(futures):
+                local_betweenness = future.result()
                 for node, value in local_betweenness.items():
                     betweenness[node] += value
 
@@ -195,23 +185,18 @@ class ManualGraphStatistics(AbstractGraphStatistics):
             else:
                 return (node, 0.0)
 
-    def calculate_closeness_centrality(self, parallel: bool = True) -> Dict[int, float]:
+    def calculate_closeness_centrality(self) -> Dict[int, float]:
         closeness = {}
 
-        if parallel and len(self.nodes) > 50:
-            with ThreadPoolExecutor() as executor:
-                futures = [
-                    executor.submit(self._calculate_closeness_for_node, node)
-                    for node in self.nodes
-                ]
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(self._calculate_closeness_for_node, node)
+                for node in self.nodes
+            ]
 
-                for future in as_completed(futures):
-                    node, value = future.result()
-                    closeness[node] = value
-        else:
-            for node in self.nodes:
-                node_id, value = self._calculate_closeness_for_node(node)
-                closeness[node_id] = value
+            for future in as_completed(futures):
+                node, value = future.result()
+                closeness[node] = value
 
         return closeness
 
@@ -355,6 +340,15 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         return 0.0
 
     def detect_communities(self) -> Dict[int, int]:
+        cached_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=str(self.edges),
+            metric_name="communities",
+        )
+        cached = self.__cache_store.get(cached_key)
+        if cached is not None:
+            log("Using cached communities.")
+            return {int(k): v for k, v in cached.items()}
+
         community = {node: node for node in self.nodes}
 
         total_weight = sum(sum(weights.values()) for weights in self.edges.values())
@@ -431,7 +425,9 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         unique_comms = sorted(set(community.values()))
         comm_map = {old: new for new, old in enumerate(unique_comms)}
-        return {node: comm_map[comm] for node, comm in community.items()}
+        community = {node: comm_map[comm] for node, comm in community.items()}
+        self.__cache_store.set(cached_key, community)
+        return community
 
     def _modularity_gain_optimized(
         self,
@@ -511,93 +507,34 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         return bridging
 
-    def get_or_calculate_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
-        if self._metrics_cache:
-            return self._metrics_cache
-
-        self._metrics_cache = self.calculate_all_metrics(parallel)
-        return self._metrics_cache
-
-    def calculate_all_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
+    def calculate_all_metrics(self) -> Dict[str, Dict[int, float]]:
         log("Calculating all metrics in parallel...")
 
-        if not parallel or len(self.nodes) < 50:
-            log("  Using sequential mode for small graph...")
-            metrics = {
-                "degree_centrality": self.calculate_degree_centrality(),
-                "in_degree_centrality": self.calculate_in_degree_centrality(),
-                "out_degree_centrality": self.calculate_out_degree_centrality(),
-                "betweenness_centrality": self.calculate_betweenness_centrality(
-                    parallel=False
-                ),
-                "closeness_centrality": self.calculate_closeness_centrality(
-                    parallel=False
-                ),
-                "pagerank": self.calculate_pagerank(),
-                "eigenvector_centrality": self.calculate_eigenvector_centrality(),
-                "clustering_coefficient": self.calculate_clustering_coefficient(),
-            }
-
-            log("  Calculating community metrics...")
-            metrics["community"] = self.detect_communities()
-            metrics["bridging_node"] = self.identify_bridging_nodes()
-
-            return metrics
-
-        metrics = {}
-
-        metric_functions = {
+        metrics = {
             "degree_centrality": self.calculate_degree_centrality,
             "in_degree_centrality": self.calculate_in_degree_centrality,
             "out_degree_centrality": self.calculate_out_degree_centrality,
+            "betweenness_centrality": self.calculate_betweenness_centrality,
+            "closeness_centrality": self.calculate_closeness_centrality,
             "pagerank": self.calculate_pagerank,
             "eigenvector_centrality": self.calculate_eigenvector_centrality,
             "clustering_coefficient": self.calculate_clustering_coefficient,
+            "community": self.detect_communities,
         }
 
-        log("  Running independent metrics in parallel...")
-        with ThreadPoolExecutor() as executor:
-            future_to_metric = {
-                executor.submit(func): name for name, func in metric_functions.items()
-            }
+        calculated_metrics = submit_parallel_processes(metrics)
 
-            for future in as_completed(future_to_metric):
-                metric_name = future_to_metric[future]
-                try:
-                    metrics[metric_name] = future.result()
-                    log(f"    [OK] {metric_name}")
-                except Exception as e:
-                    log(f"    [ERROR] {metric_name} failed: {e}")
-                    metrics[metric_name] = {node: 0.0 for node in self.nodes}
-
-        log("  Running betweenness centrality (parallelized)...")
-        metrics["betweenness_centrality"] = self.calculate_betweenness_centrality(
-            parallel=True
-        )
-
-        log("  Running closeness centrality (parallelized)...")
-        metrics["closeness_centrality"] = self.calculate_closeness_centrality(
-            parallel=True
-        )
-
-        log("  Running community detection...")
-        metrics["community"] = self.detect_communities()
-
-        log("  Identifying bridging nodes...")
-        metrics["bridging_node"] = self.identify_bridging_nodes()
+        calculated_metrics["bridging_node"] = self.identify_bridging_nodes()
+        del calculated_metrics["community"]
 
         log("All metrics calculated!")
-        return metrics
+        return calculated_metrics
 
     def export_metrics_to_csv(self, output_file: Path):
         log(f"Exporting metrics to {output_file}...")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        metrics = self.get_or_calculate_metrics()
+        metrics = self.calculate_all_metrics(parallel=True)
 
         with open(output_file, "w", encoding="utf-8", newline="") as f:
             fields = list(metrics.keys())

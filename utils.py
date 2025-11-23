@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Callable
 import json
 import hashlib
 from pathlib import Path
@@ -12,13 +12,22 @@ class CacheStore:
         self.__cache_dir.mkdir(parents=True, exist_ok=True)
         log(f"Cache directory: {self.__cache_dir}")
 
-    def get_cache_key(self, query: Any, variables: Dict[str, Any] | None = None) -> str:
+    def get_request_cache_key(
+        self, query: Any, variables: Dict[str, Any] | None = None
+    ) -> str:
         query_str = str(query)
         variables_str = json.dumps(variables or {}, sort_keys=True)
         cache_string = f"{query_str}::{variables_str}"
         return hashlib.sha256(cache_string.encode()).hexdigest()
 
-    def get(self, cache_key: str) -> Dict[str, Any] | None:
+    def get_statistic_cache_key(
+        self, graph_data: str, metric_name: str, params: Dict[str, Any] | None = None
+    ) -> str:
+        params_str = json.dumps(params or {}, sort_keys=True)
+        cache_string = f"{graph_data}::{metric_name}::{params_str}"
+        return hashlib.sha256(cache_string.encode()).hexdigest()
+
+    def get(self, cache_key: str) -> Dict[Any, Any] | None:
         cache_file = self.__cache_dir / f"{cache_key}.json"
         if cache_file.exists():
             try:
@@ -61,3 +70,23 @@ def extract_from_key(data: Dict[str, Any], key: str) -> Any:
 def log(message: str) -> None:
     for line in message.splitlines():
         print(f"[{datetime.now().isoformat()}] {line}")
+
+
+def submit_parallel_processes(
+    processes: Dict[str, Callable[[], Any]],
+) -> Dict[str, Any]:
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    results: Dict[str, Any] = {}
+    with ProcessPoolExecutor() as executor:
+        future_to_name = {
+            executor.submit(func): name for name, func in processes.items()
+        }
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                result = future.result()
+                results[name] = result
+            except Exception as e:
+                log(f"Error in process '{name}': {e}")
+    return results

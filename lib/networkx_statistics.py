@@ -5,14 +5,14 @@ import networkx as nx
 
 from lib.abstract_graph import AbstractGraph
 from lib.abstract_statistics import AbstractGraphStatistics
-from utils import log
+from utils import log, submit_parallel_processes, CacheStore
 
 
 class NetworkXGraphStatistics(AbstractGraphStatistics):
     def __init__(self, graph: AbstractGraph):
         super().__init__(graph)
         self._nx_graph = self._convert_to_networkx()
-        self._metrics_cache: Dict[str, Dict[int, float]] = {}
+        self.__cache_store = CacheStore("networkx/statistics")
 
     def _convert_to_networkx(self) -> nx.DiGraph:
         g = nx.DiGraph()
@@ -43,12 +43,10 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
     def calculate_out_degree_centrality(self) -> Dict[int, float]:
         return nx.out_degree_centrality(self._nx_graph)
 
-    def calculate_betweenness_centrality(
-        self, parallel: bool = True
-    ) -> Dict[int, float]:
+    def calculate_betweenness_centrality(self) -> Dict[int, float]:
         return nx.betweenness_centrality(self._nx_graph, weight="weight")
 
-    def calculate_closeness_centrality(self, parallel: bool = True) -> Dict[int, float]:
+    def calculate_closeness_centrality(self) -> Dict[int, float]:
         return nx.closeness_centrality(self._nx_graph)
 
     def calculate_pagerank(
@@ -99,6 +97,23 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
             return 0.0
 
     def detect_communities(self) -> Dict[int, int]:
+        edges_tuple = tuple(
+            sorted(
+                (u, v, d.get("weight", 1.0))
+                for u, v, d in self._nx_graph.edges(data=True)
+            )
+        )
+
+        cached_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=str(edges_tuple),
+            metric_name="detect_communities",
+            params=None,
+        )
+        cached_result = self.__cache_store.get(cached_key)
+        if cached_result is not None:
+            log("Using cached communities.")
+            return {int(k): v for k, v in cached_result.items()}
+
         undirected = self._nx_graph.to_undirected()
         communities = nx.community.greedy_modularity_communities(
             undirected, weight="weight"
@@ -109,6 +124,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
             for node in community_set:
                 community_map[node] = community_id
 
+        self.__cache_store.set(cached_key, community_map)
         return community_map
 
     def calculate_modularity(self) -> float:
@@ -145,43 +161,34 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
 
         return bridging
 
-    def get_or_calculate_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
-        if self._metrics_cache:
-            return self._metrics_cache
-
-        self._metrics_cache = self.calculate_all_metrics(parallel)
-        return self._metrics_cache
-
-    def calculate_all_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
+    def calculate_all_metrics(self) -> Dict[str, Dict[int, float]]:
         log("Calculating all metrics using NetworkX...")
 
         metrics = {
-            "degree_centrality": self.calculate_degree_centrality(),
-            "in_degree_centrality": self.calculate_in_degree_centrality(),
-            "out_degree_centrality": self.calculate_out_degree_centrality(),
-            "betweenness_centrality": self.calculate_betweenness_centrality(),
-            "closeness_centrality": self.calculate_closeness_centrality(),
-            "pagerank": self.calculate_pagerank(),
-            "eigenvector_centrality": self.calculate_eigenvector_centrality(),
-            "clustering_coefficient": self.calculate_clustering_coefficient(),
+            "degree_centrality": self.calculate_degree_centrality,
+            "in_degree_centrality": self.calculate_in_degree_centrality,
+            "out_degree_centrality": self.calculate_out_degree_centrality,
+            "betweenness_centrality": self.calculate_betweenness_centrality,
+            "closeness_centrality": self.calculate_closeness_centrality,
+            "pagerank": self.calculate_pagerank,
+            "eigenvector_centrality": self.calculate_eigenvector_centrality,
+            "clustering_coefficient": self.calculate_clustering_coefficient,
+            "community": self.detect_communities,
         }
 
-        log("  Calculating community metrics...")
-        metrics["community"] = self.detect_communities()
-        metrics["bridging_node"] = self.identify_bridging_nodes()
+        calculated_metrics = submit_parallel_processes(metrics)
+
+        calculated_metrics["bridging_node"] = self.identify_bridging_nodes()
+        del calculated_metrics["community"]
 
         log("[OK] All metrics calculated!")
-        return metrics
+        return calculated_metrics
 
     def export_metrics_to_csv(self, output_file: Path):
         log(f"Exporting metrics to {output_file}...")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        metrics = self.get_or_calculate_metrics()
+        metrics = self.calculate_all_metrics()
 
         with open(output_file, "w", encoding="utf-8", newline="") as f:
             fields = list(metrics.keys())

@@ -22,13 +22,11 @@ class AbstractGraphStatistics(ABC):
         pass
 
     @abstractmethod
-    def calculate_betweenness_centrality(
-        self, parallel: bool = True
-    ) -> Dict[int, float]:
+    def calculate_betweenness_centrality(self) -> Dict[int, float]:
         pass
 
     @abstractmethod
-    def calculate_closeness_centrality(self, parallel: bool = True) -> Dict[int, float]:
+    def calculate_closeness_centrality(self) -> Dict[int, float]:
         pass
 
     @abstractmethod
@@ -72,15 +70,7 @@ class AbstractGraphStatistics(ABC):
         pass
 
     @abstractmethod
-    def get_or_calculate_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
-        pass
-
-    @abstractmethod
-    def calculate_all_metrics(
-        self, parallel: bool = True
-    ) -> Dict[str, Dict[int, float]]:
+    def calculate_all_metrics(self) -> Dict[str, Dict[int, float]]:
         pass
 
     @abstractmethod

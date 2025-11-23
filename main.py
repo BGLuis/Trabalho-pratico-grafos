@@ -64,16 +64,22 @@ def analyze_graph(
 
     edges_file = None
     vertices_file = None
+    base_name = None
+    process_type = None
 
     if input_path.is_dir():
         for file in input_path.glob("*_edges.csv"):
             edges_file = file
             base_name = file.name.replace("_edges.csv", "")
             vertices_file = input_path / f"{base_name}_vertexes.csv"
+            process_type = input_path.stem
+            base_name = input_path.parent.stem
             break
     else:
         edges_file = Path(f"{input_path}_edges.csv")
         vertices_file = Path(f"{input_path}_vertexes.csv")
+        process_type = input_path.parent.stem
+        base_name = input_path.parent.parent.stem
 
     if not edges_file or not edges_file.exists():
         raise FileNotFoundError(f"Edges file not found in {input_dir}")
@@ -93,15 +99,10 @@ def analyze_graph(
     else:
         stats = ManualGraphStatistics(graph)
 
-    log("\nPre-calculating all metrics in parallel...")
-    stats.get_or_calculate_metrics(parallel=True)
-    log("[OK] Metrics calculation complete!\n")
-
-    output_path = Path(output_dir)
+    output_path = Path(f"{output_dir}/{strategy}/{base_name}")
     output_path.mkdir(parents=True, exist_ok=True)
 
-    base_name = edges_file.stem.replace("_edges", "")
-    metrics_file = output_path / f"{strategy}/{base_name}_metrics.csv"
+    metrics_file = output_path / f"{process_type}.csv"
 
     stats.export_metrics_to_csv(metrics_file)
 
