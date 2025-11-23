@@ -1,6 +1,7 @@
 from os import PathLike
 from typing import List, Tuple
 from pathlib import Path
+import csv
 
 from lib.abstract_graph import AbstractGraph
 from lib.common import Vertex
@@ -15,6 +16,36 @@ class AdjacencyGraphList(AbstractGraph):
         self.__adjacency_lists: List[List[Tuple[Vertex, float]]] = [
             [] for i in range(num_vertices)
         ]
+
+    @classmethod
+    def from_gephi(cls, edges_file: Path, vertices_file: Path) -> "AdjacencyGraphList":
+        vertex_labels = {}
+        vertex_weights = {}
+        with open(vertices_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                node_id = int(row["Id"])
+                vertex_labels[node_id] = row["Label"]
+                vertex_weights[node_id] = float(row["Weight"])
+
+        num_vertices = len(vertex_labels)
+        graph = cls(num_vertices)
+
+        for node_id in range(num_vertices):
+            if node_id in vertex_labels:
+                graph.set_vertex_label(node_id, vertex_labels[node_id])
+                graph.set_vertex_weight(node_id, vertex_weights[node_id])
+
+        with open(edges_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                source = int(row["Source"])
+                target = int(row["Target"])
+                weight = float(row["Weight"])
+                graph.add_edge(source, target)
+                graph.set_edge_weight(source, target, weight)
+
+        return graph
 
     def get_vertex_count(self) -> int:
         return len(self.__adjacency_lists)
@@ -212,6 +243,38 @@ class AdjacencyMatrixGraph(AbstractGraph):
             Vertex(label=f"V{i}", weight=1.0) for i in range(num_vertices)
         ]
         self.matriz = [[0.0] * num_vertices for _ in range(num_vertices)]
+
+    @classmethod
+    def from_gephi(
+        cls, edges_file: Path, vertices_file: Path
+    ) -> "AdjacencyMatrixGraph":
+        vertex_labels = {}
+        vertex_weights = {}
+        with open(vertices_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                node_id = int(row["Id"])
+                vertex_labels[node_id] = row["Label"]
+                vertex_weights[node_id] = float(row["Weight"])
+
+        num_vertices = len(vertex_labels)
+        graph = cls(num_vertices)
+
+        for node_id in range(num_vertices):
+            if node_id in vertex_labels:
+                graph.set_vertex_label(node_id, vertex_labels[node_id])
+                graph.set_vertex_weight(node_id, vertex_weights[node_id])
+
+        with open(edges_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                source = int(row["Source"])
+                target = int(row["Target"])
+                weight = float(row["Weight"])
+                graph.add_edge(source, target)
+                graph.set_edge_weight(source, target, weight)
+
+        return graph
 
     def __check_vertex_index(self, v: int) -> None:
         if 0 > v or v >= self._num_vertices:

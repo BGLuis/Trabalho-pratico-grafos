@@ -3,23 +3,19 @@
 left to right direction
 
 class Vertex {
-    - __init__(label: str, weight: float)
-
-    - __label : str
-    - __weight : float
-    - __edges : Edge[]
+    - _label : str
+    - _weight : float
+    + __init__(label: str, weight: float)
+    + get_label() : str
+    + get_weight() : float
+    + set_label(new_name: str)
+    + set_weight(new_weight: float)
 }
 
-class Edge {
-    - __init__(source: Vertex, target: Vertex, weight: float = 1.0)
-
-    - __source : Vertex
-    - __target : Vertex
-    - __label : str
-    - __weight : float
-}
-
-Vertex o-- Edge
-Edge *-- Vertex
+note right of Vertex
+  Vertex is used by both
+  AdjacencyGraphList and
+  AdjacencyMatrixGraph
+end note
 
 @enduml

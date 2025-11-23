@@ -6,11 +6,12 @@ import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lib.abstract_graph import AbstractGraph
+from lib.abstract_statistics import AbstractGraphStatistics
 
 
-class GraphStatistics:
+class ManualGraphStatistics(AbstractGraphStatistics):
     def __init__(self, graph: AbstractGraph):
-        self.graph = graph
+        super().__init__(graph)
         self.nodes: Set[int] = set(range(graph.get_vertex_count()))
         self.edges: Dict[int, Dict[int, float]] = defaultdict(dict)
         self.in_edges: Dict[int, Dict[int, float]] = defaultdict(dict)
@@ -18,44 +19,6 @@ class GraphStatistics:
         self.vertex_labels: Dict[int, str] = {}
         self._metrics_cache: Dict[str, Dict[int, float]] = {}
         self._load_from_graph()
-
-    @classmethod
-    def from_csv(
-        cls, edges_file: Path, vertices_file: Path, graph_type: str = "list"
-    ) -> "GraphStatistics":
-        from lib.implementations import AdjacencyGraphList, AdjacencyMatrixGraph
-
-        vertex_labels = {}
-        vertex_weights = {}
-        with open(vertices_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                node_id = int(row["Id"])
-                vertex_labels[node_id] = row["Label"]
-                vertex_weights[node_id] = float(row["Weight"])
-
-        num_vertices = len(vertex_labels)
-
-        if graph_type == "matrix":
-            graph = AdjacencyMatrixGraph(num_vertices)
-        else:
-            graph = AdjacencyGraphList(num_vertices)
-
-        for node_id in range(num_vertices):
-            if node_id in vertex_labels:
-                graph.set_vertex_label(node_id, vertex_labels[node_id])
-                graph.set_vertex_weight(node_id, vertex_weights[node_id])
-
-        with open(edges_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                source = int(row["Source"])
-                target = int(row["Target"])
-                weight = float(row["Weight"])
-                graph.add_edge(source, target)
-                graph.set_edge_weight(source, target, weight)
-
-        return cls(graph)
 
     def _load_from_graph(self):
         num_vertices = self.graph.get_vertex_count()

@@ -3,7 +3,9 @@ from extractor.requests import fetch_all
 from extractor.service import GithubService
 from lib.implementations import AdjacencyMatrixGraph
 from lib.parser import GraphParser, InteractionsDataFactory
-from lib.statistics import GraphStatistics
+from lib.statistics import ManualGraphStatistics
+from lib.networkx_statistics import NetworkXGraphStatistics
+from lib.graph_factory import GraphFactory
 
 import argparse
 from json import dump
@@ -55,7 +57,9 @@ def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"
     print("Export complete!")
 
 
-def analyze_graph(input_dir: str, output_dir: str = "statistics"):
+def analyze_graph(
+    input_dir: str, output_dir: str = "statistics", strategy: str = "manual"
+):
     input_path = Path(input_dir)
 
     edges_file = None
@@ -80,8 +84,14 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
     print(f"  Edges: {edges_file}")
     print(f"  Vertices: {vertices_file}")
     print("  Using: AdjacencyListGraph representation")
+    print(f"  Strategy: {strategy}")
 
-    stats = GraphStatistics.from_csv(edges_file, vertices_file, graph_type="list")
+    graph = GraphFactory.from_gephi(edges_file, vertices_file, graph_type="list")
+
+    if strategy == "networkx":
+        stats = NetworkXGraphStatistics(graph)
+    else:
+        stats = ManualGraphStatistics(graph)
 
     print("\nPre-calculating all metrics in parallel...")
     stats.get_or_calculate_metrics(parallel=True)
@@ -91,7 +101,7 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
     output_path.mkdir(parents=True, exist_ok=True)
 
     base_name = edges_file.stem.replace("_edges", "")
-    metrics_file = output_path / f"{base_name}_metrics.csv"
+    metrics_file = output_path / f"{strategy}/{base_name}_metrics.csv"
 
     stats.export_metrics_to_csv(metrics_file)
 
@@ -155,6 +165,13 @@ def main():
         default="statistics",
         help="Output directory for statistics (default: statistics)",
     )
+    analyze_parser.add_argument(
+        "-s",
+        "--strategy",
+        choices=["manual", "networkx"],
+        default="manual",
+        help="Statistics calculation strategy: manual (custom algorithms) or networkx (library wrapper)",
+    )
 
     args = parser.parse_args()
 
@@ -163,7 +180,7 @@ def main():
     elif args.command == "build":
         build_graph(args.input, args.output, args.graph_type)
     elif args.command == "analyze":
-        analyze_graph(args.input, args.output)
+        analyze_graph(args.input, args.output, args.strategy)
     else:
         parser.print_help()
 

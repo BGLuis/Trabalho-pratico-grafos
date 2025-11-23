@@ -65,7 +65,7 @@ package extractor {
     RequestsHTTPTransport ..> Auth : uses
 }
 
-package utils {
+package utils <<External>> {
     class CacheStore {
         - __cache_dir : Path
         + __init__(namespace: str)
@@ -73,6 +73,30 @@ package utils {
         + get(cache_key: str) : Dict | None
         + set(cache_key: str, data: Dict)
         + clear()
+    }
+}
+
+package "gql (External)" <<External>> {
+    class Client {
+        + __init__(transport: RequestsHTTPTransport)
+        + execute(query: GraphQLRequest) : Dict
+    }
+
+    class GraphQLRequest {
+    }
+
+    class RequestsHTTPTransport {
+        + auth : AuthBase
+        + __init__(url: str)
+    }
+}
+
+package "requests (External)" <<External>> {
+    class AuthBase <<interface>> {
+        + __call__(r: PreparedRequest) : PreparedRequest
+    }
+
+    class PreparedRequest {
     }
 }
 

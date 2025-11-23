@@ -2,6 +2,7 @@
 
 package lib {
     abstract class AbstractGraph {
+        + {abstract} {static} from_gephi(edges_file: Path, vertices_file: Path) : AbstractGraph
         + {abstract} get_vertex_count() : int
         + {abstract} get_edge_count() : int
         + {abstract} has_edge(u: int, v: int) : bool
@@ -38,12 +39,14 @@ package lib {
     class AdjacencyGraphList {
         - __vertices : List[Vertex]
         - __adjacency_lists : List[List[Tuple[Vertex, float]]]
+        + {static} from_gephi(edges_file: Path, vertices_file: Path) : AdjacencyGraphList
     }
 
     class AdjacencyMatrixGraph {
         - _num_vertices : int
         - _vertices : List[Vertex]
         - matriz : List[List[float]]
+        + {static} from_gephi(edges_file: Path, vertices_file: Path) : AdjacencyMatrixGraph
     }
 
     class ExtractorConfig {
@@ -81,38 +84,52 @@ package lib {
         + get_graph(data: InteractionsData) : AbstractGraph
     }
 
-    class GraphStatistics {
-        + graph : AbstractGraph
+    abstract class AbstractGraphStatistics {
+        # graph : AbstractGraph
+        + {abstract} calculate_degree_centrality() : Dict[int, float]
+        + {abstract} calculate_in_degree_centrality() : Dict[int, float]
+        + {abstract} calculate_out_degree_centrality() : Dict[int, float]
+        + {abstract} calculate_betweenness_centrality(parallel: bool) : Dict[int, float]
+        + {abstract} calculate_closeness_centrality(parallel: bool) : Dict[int, float]
+        + {abstract} calculate_pagerank(...) : Dict[int, float]
+        + {abstract} calculate_eigenvector_centrality(...) : Dict[int, float]
+        + {abstract} calculate_density() : float
+        + {abstract} calculate_clustering_coefficient() : Dict[int, float]
+        + {abstract} calculate_average_clustering() : float
+        + {abstract} calculate_assortativity() : float
+        + {abstract} detect_communities() : Dict[int, int]
+        + {abstract} calculate_modularity() : float
+        + {abstract} identify_bridging_nodes() : Dict[int, bool]
+        + {abstract} get_or_calculate_metrics(parallel: bool) : Dict
+        + {abstract} calculate_all_metrics(parallel: bool) : Dict
+        + {abstract} export_metrics_to_csv(output_file: Path)
+    }
+
+    class ManualGraphStatistics {
         - nodes : Set[int]
         - edges : Dict[int, Dict[int, float]]
         - in_edges : Dict[int, Dict[int, float]]
-        - node_weights : Dict[int, float]
-        - vertex_labels : Dict[int, str]
-        - _metrics_cache : Dict[str, Dict[int, float]]
-        + {static} from_csv(edges_file: Path, vertices_file: Path, graph_type: str) : GraphStatistics
-        + calculate_degree_centrality() : Dict[int, float]
-        + calculate_in_degree_centrality() : Dict[int, float]
-        + calculate_out_degree_centrality() : Dict[int, float]
-        + calculate_betweenness_centrality(parallel: bool) : Dict[int, float]
-        + calculate_closeness_centrality(parallel: bool) : Dict[int, float]
-        + calculate_pagerank(alpha: float, max_iter: int, tol: float) : Dict[int, float]
-        + calculate_eigenvector_centrality(max_iter: int, tol: float) : Dict[int, float]
-        + calculate_density() : float
-        + calculate_clustering_coefficient() : Dict[int, float]
-        + calculate_average_clustering() : float
-        + calculate_assortativity() : float
-        + detect_communities() : Dict[int, int]
-        + calculate_modularity() : float
-        + identify_bridging_nodes() : Dict[int, bool]
-        + get_or_calculate_metrics(parallel: bool) : Dict[str, Dict[int, float]]
-        + calculate_all_metrics(parallel: bool) : Dict[str, Dict[int, float]]
-        + export_metrics_to_csv(output_file: Path)
+        - _metrics_cache : Dict
+        - _load_from_graph()
+        - _get_neighbors(node: int) : List[int]
+        - _bfs_shortest_paths(source: int) : Tuple
+        - _modularity_gain_optimized(...) : float
+    }
+
+    class NetworkXGraphStatistics {
+        - _nx_graph : nx.DiGraph
+        - _metrics_cache : Dict
+        - _convert_to_networkx() : nx.DiGraph
     }
 
     AbstractGraph <|-- AdjacencyGraphList
     AbstractGraph <|-- AdjacencyMatrixGraph
     AdjacencyGraphList *-- Vertex : contains
     AdjacencyMatrixGraph *-- Vertex : contains
+
+    AbstractGraphStatistics <|-- ManualGraphStatistics : extends
+    AbstractGraphStatistics <|-- NetworkXGraphStatistics : extends
+    AbstractGraphStatistics o-- AbstractGraph : contains
 
     InteractionsDataFactory ..> InteractionsData : creates
     InteractionsDataFactory ..> ExtractorConfig : uses
@@ -121,9 +138,19 @@ package lib {
     GraphParser ..> AbstractGraph : creates
     GraphParser o-- AbstractGraph : contains
 
-    GraphStatistics o-- AbstractGraph : contains
-    GraphStatistics ..> AdjacencyGraphList : creates in from_csv
-    GraphStatistics ..> AdjacencyMatrixGraph : creates in from_csv
+    GraphFactory ..> AdjacencyGraphList : creates
+    GraphFactory ..> AdjacencyMatrixGraph : creates
+    GraphFactory ..> AbstractGraph : returns
 }
+
+package "concurrent.futures (External)" <<External>> {
+    class ThreadPoolExecutor {
+        + submit(fn: Callable) : Future
+        + __enter__() : ThreadPoolExecutor
+        + __exit__()
+    }
+}
+
+GraphStatistics ..> ThreadPoolExecutor : uses for parallelization
 
 @enduml

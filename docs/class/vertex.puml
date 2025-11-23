@@ -1,10 +1,13 @@
-@startuml base-classes
+@startuml vertex-class
 
 class Vertex {
-    - __init__(label: str, weight: float)
-
-    - __label : str
-    - __weight : float
+    - _label : str
+    - _weight : float
+    + __init__(label: str, weight: float)
+    + get_label() : str
+    + get_weight() : float
+    + set_label(new_name: str)
+    + set_weight(new_weight: float)
 }
 
 @enduml

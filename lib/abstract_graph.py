@@ -1,9 +1,15 @@
 from abc import ABC, abstractmethod
 from os import PathLike
+from pathlib import Path
 
 
 class AbstractGraph(ABC):
     def __init__(self):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_gephi(cls, edges_file: Path, vertices_file: Path) -> "AbstractGraph":
         pass
 
     @abstractmethod
