@@ -59,4 +59,5 @@ def extract_from_key(data: Dict[str, Any], key: str) -> Any:
 
 
 def log(message: str) -> None:
-    print(f"[{datetime.now().isoformat()}] {message}")
+    for line in message.splitlines():
+        print(f"[{datetime.now().isoformat()}] {line}")
