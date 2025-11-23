@@ -93,13 +93,14 @@ package lib {
 
     abstract class AbstractGraphStatistics {
         # graph : AbstractGraph
+        + __init__(graph: AbstractGraph)
         + {abstract} calculate_degree_centrality() : Dict[int, float]
         + {abstract} calculate_in_degree_centrality() : Dict[int, float]
         + {abstract} calculate_out_degree_centrality() : Dict[int, float]
-        + {abstract} calculate_betweenness_centrality(parallel: bool) : Dict[int, float]
-        + {abstract} calculate_closeness_centrality(parallel: bool) : Dict[int, float]
-        + {abstract} calculate_pagerank(...) : Dict[int, float]
-        + {abstract} calculate_eigenvector_centrality(...) : Dict[int, float]
+        + {abstract} calculate_betweenness_centrality() : Dict[int, float]
+        + {abstract} calculate_closeness_centrality() : Dict[int, float]
+        + {abstract} calculate_pagerank(alpha: float, max_iter: int, tol: float) : Dict[int, float]
+        + {abstract} calculate_eigenvector_centrality(max_iter: int, tol: float) : Dict[int, float]
         + {abstract} calculate_density() : float
         + {abstract} calculate_clustering_coefficient() : Dict[int, float]
         + {abstract} calculate_average_clustering() : float
@@ -107,18 +108,19 @@ package lib {
         + {abstract} detect_communities() : Dict[int, int]
         + {abstract} calculate_modularity() : float
         + {abstract} identify_bridging_nodes() : Dict[int, bool]
-        + {abstract} get_or_calculate_metrics(parallel: bool) : Dict
-        + {abstract} calculate_all_metrics(parallel: bool) : Dict
-        + {abstract} export_metrics_to_csv(output_file: Path)
+        + {abstract} calculate_all_metrics() : Dict[str, Dict[int, float]]
+        + {abstract} export_metrics_to_csv(nodes_output_file: Path, graph_output_file: Path)
     }
 
     class ManualGraphStatistics {
+        - graph : AbstractGraph
+        - __cache_store : CacheStore
         - nodes : Set[int]
         - edges : Dict[int, Dict[int, float]]
         - in_edges : Dict[int, Dict[int, float]]
         - node_weights : Dict[int, float]
         - vertex_labels : Dict[int, str]
-        - _metrics_cache : Dict[str, Dict[int, float]]
+        + __init__(graph: AbstractGraph)
         - _load_from_graph()
         - _get_neighbors(node: int) : List[int]
         - _get_predecessors(node: int) : List[int]
@@ -130,14 +132,16 @@ package lib {
     }
 
     class NetworkXGraphStatistics {
+        - graph : AbstractGraph
         - _nx_graph : nx.DiGraph
-        - _metrics_cache : Dict[str, Dict[int, float]]
+        - __cache_store : CacheStore
+        + __init__(graph: AbstractGraph)
         - _convert_to_networkx() : nx.DiGraph
-        {note: requires numpy and scipy}
+        - __get_deterministic_cache_key() : str
     }
 
     class GraphFactory {
-        + {static} from_gephi(edges_file: Path, vertices_file: Path, graph_type: str) : AbstractGraph
+        + {static} from_gephi(edges_file: Path, vertices_file: Path, graph_type: str = "list") : AbstractGraph
     }
 
     AbstractGraph <|-- AdjacencyGraphList

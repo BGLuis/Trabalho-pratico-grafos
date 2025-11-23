@@ -57,11 +57,9 @@ package "lib" {
     }
     
     class ManualGraphStatistics {
-        {note: Pure Python implementation\nwith parallelization}
     }
     
     class NetworkXGraphStatistics {
-        {note: Requires numpy & scipy}
     }
 }
 
@@ -75,11 +73,9 @@ package "main" {
 
 package "External Dependencies" {
     class NetworkX {
-        {note: Optional for\nNetworkXGraphStatistics}
     }
     
     class "NumPy/SciPy" {
-        {note: Required by NetworkX}
     }
 }
 
@@ -107,17 +103,5 @@ NetworkX ..> "NumPy/SciPy" : requires
 CLI ..> GithubService : fetch
 CLI ..> InteractionsDataFactory : build
 CLI ..> AbstractGraphStatistics : analyze
-
-note top of ManualGraphStatistics
-  Default strategy
-  Zero external dependencies
-  Parallel algorithms for performance
-end note
-
-note top of NetworkXGraphStatistics
-  Alternative strategy
-  Requires pip install numpy scipy
-  Battle-tested algorithms
-end note
 
 @enduml

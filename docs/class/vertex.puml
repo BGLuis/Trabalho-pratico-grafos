@@ -11,11 +11,4 @@ class Vertex {
     + set_weight(new_weight: float)
 }
 
-note bottom of Vertex
-  Simple vertex representation
-  with label and weight.
-  
-  Validates weight >= 0 in setter.
-end note
-
 @enduml

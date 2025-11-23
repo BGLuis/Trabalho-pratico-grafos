@@ -14,10 +14,11 @@ package extractor {
     }
 
     class ExtractorConfig {
-        + auth_tokens() : List[str] <<property>>
-        + base_url() : str <<property>>
-        + repo_owner() : str <<property>>
-        + repo_name() : str <<property>>
+        + __init__()
+        + auth_tokens() : List[str]
+        + base_url() : str
+        + repo_owner() : str
+        + repo_name() : str
     }
 
     class Auth {
