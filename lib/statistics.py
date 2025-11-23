@@ -35,14 +35,14 @@ class ManualGraphStatistics(AbstractGraphStatistics):
                     self.edges[source][target] = weight
                     self.in_edges[target][source] = weight
 
-    def _get_neighbors(self, node: int) -> List[int]:
+    def _get_successors(self, node: int) -> List[int]:
         return list(self.edges.get(node, {}).keys())
 
     def _get_predecessors(self, node: int) -> List[int]:
         return list(self.in_edges.get(node, {}).keys())
 
     def _get_all_neighbors_undirected(self, node: int) -> Set[int]:
-        neighbors = set(self._get_neighbors(node))
+        neighbors = set(self._get_successors(node))
         neighbors.update(self._get_predecessors(node))
         return neighbors
 
@@ -59,7 +59,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         while queue:
             current = queue.popleft()
 
-            for neighbor in self._get_neighbors(current):
+            for neighbor in self._get_successors(current):
                 if distances[neighbor] == float("inf"):
                     distances[neighbor] = distances[current] + 1
                     queue.append(neighbor)
@@ -76,8 +76,8 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         centrality = {}
         for node in self.nodes:
-            degree = len(self._get_neighbors(node)) + len(self._get_predecessors(node))
-            centrality[node] = degree / (2 * (n - 1))
+            degree = len(self._get_successors(node)) + len(self._get_predecessors(node))
+            centrality[node] = degree / (n - 1)
 
         return centrality
 
@@ -100,7 +100,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         centrality = {}
         for node in self.nodes:
-            out_degree = len(self._get_neighbors(node))
+            out_degree = len(self._get_successors(node))
             centrality[node] = out_degree / (n - 1)
 
         return centrality
@@ -121,7 +121,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
             current = queue.popleft()
             stack.append(current)
 
-            for neighbor in self._get_neighbors(current):
+            for neighbor in self._get_successors(current):
                 if distances[neighbor] < 0:
                     distances[neighbor] = distances[current] + 1
                     queue.append(neighbor)
@@ -224,7 +224,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
         pagerank = {node: 1.0 / n for node in self.nodes}
 
-        out_degree = {node: len(self._get_neighbors(node)) for node in self.nodes}
+        out_degree = {node: len(self._get_successors(node)) for node in self.nodes}
 
         for iteration in range(max_iter):
             new_pagerank = {}
@@ -600,8 +600,10 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         metrics = self.get_or_calculate_metrics()
 
         with open(output_file, "w", encoding="utf-8", newline="") as f:
-            fieldnames = ["Id", "Label"] + list(metrics.keys())
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            fields = list(metrics.keys())
+            fields.sort()
+            fields = ["Id", "Label"] + fields
+            writer = csv.DictWriter(f, fieldnames=fields)
             writer.writeheader()
 
             for node in self.nodes:

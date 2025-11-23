@@ -184,8 +184,10 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
         metrics = self.get_or_calculate_metrics()
 
         with open(output_file, "w", encoding="utf-8", newline="") as f:
-            fieldnames = ["Id", "Label"] + list(metrics.keys())
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            fields = list(metrics.keys())
+            fields.sort()
+            fields = ["Id", "Label"] + fields
+            writer = csv.DictWriter(f, fieldnames=fields)
             writer.writeheader()
 
             for node in self._nx_graph.nodes():
