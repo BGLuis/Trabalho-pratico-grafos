@@ -14,5 +14,5 @@ class Vertex:
 
     def set_weight(self, new_weight: float):
         if new_weight < 0:
-            raise ValueError("O peso do vértice não pode ser negativo.")
+            raise ValueError("Vertex weight cannot be negative.")
         self._weight = new_weight

@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lib.abstract_graph import AbstractGraph
 from lib.abstract_statistics import AbstractGraphStatistics
+from utils import log
 
 
 class ManualGraphStatistics(AbstractGraphStatistics):
@@ -378,7 +379,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         min_improvement = 1e-6
 
         while improved and iterations < max_iterations:
-            print(f"Community detection iteration {iterations + 1}...")
+            log(f"Community detection iteration {iterations + 1}...")
             improved = False
             iterations += 1
             moves_count = 0
@@ -424,9 +425,9 @@ class ManualGraphStatistics(AbstractGraphStatistics):
                     moves_count += 1
 
             if moves_count > 0:
-                print(f"Iteration {iterations}: {moves_count} nodes moved")
+                log(f"Iteration {iterations}: {moves_count} nodes moved")
 
-        print(f"Community detection converged after {iterations} iterations")
+        log(f"Community detection converged after {iterations} iterations")
 
         unique_comms = sorted(set(community.values()))
         comm_map = {old: new for new, old in enumerate(unique_comms)}
@@ -522,10 +523,10 @@ class ManualGraphStatistics(AbstractGraphStatistics):
     def calculate_all_metrics(
         self, parallel: bool = True
     ) -> Dict[str, Dict[int, float]]:
-        print("Calculating all metrics in parallel...")
+        log("Calculating all metrics in parallel...")
 
         if not parallel or len(self.nodes) < 50:
-            print("  Using sequential mode for small graph...")
+            log("  Using sequential mode for small graph...")
             metrics = {
                 "degree_centrality": self.calculate_degree_centrality(),
                 "in_degree_centrality": self.calculate_in_degree_centrality(),
@@ -541,7 +542,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
                 "clustering_coefficient": self.calculate_clustering_coefficient(),
             }
 
-            print("  Calculating community metrics...")
+            log("  Calculating community metrics...")
             metrics["community"] = self.detect_communities()
             metrics["bridging_node"] = self.identify_bridging_nodes()
 
@@ -558,7 +559,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
             "clustering_coefficient": self.calculate_clustering_coefficient,
         }
 
-        print("  Running independent metrics in parallel...")
+        log("  Running independent metrics in parallel...")
         with ThreadPoolExecutor() as executor:
             future_to_metric = {
                 executor.submit(func): name for name, func in metric_functions.items()
@@ -568,32 +569,32 @@ class ManualGraphStatistics(AbstractGraphStatistics):
                 metric_name = future_to_metric[future]
                 try:
                     metrics[metric_name] = future.result()
-                    print(f"    ✓ {metric_name}")
+                    log(f"    [OK] {metric_name}")
                 except Exception as e:
-                    print(f"    ✗ {metric_name} failed: {e}")
+                    log(f"    [ERROR] {metric_name} failed: {e}")
                     metrics[metric_name] = {node: 0.0 for node in self.nodes}
 
-        print("  Running betweenness centrality (parallelized)...")
+        log("  Running betweenness centrality (parallelized)...")
         metrics["betweenness_centrality"] = self.calculate_betweenness_centrality(
             parallel=True
         )
 
-        print("  Running closeness centrality (parallelized)...")
+        log("  Running closeness centrality (parallelized)...")
         metrics["closeness_centrality"] = self.calculate_closeness_centrality(
             parallel=True
         )
 
-        print("  Running community detection...")
+        log("  Running community detection...")
         metrics["community"] = self.detect_communities()
 
-        print("  Identifying bridging nodes...")
+        log("  Identifying bridging nodes...")
         metrics["bridging_node"] = self.identify_bridging_nodes()
 
-        print("All metrics calculated!")
+        log("All metrics calculated!")
         return metrics
 
     def export_metrics_to_csv(self, output_file: Path):
-        print(f"Exporting metrics to {output_file}...")
+        log(f"Exporting metrics to {output_file}...")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         metrics = self.get_or_calculate_metrics()

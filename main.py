@@ -11,25 +11,25 @@ import argparse
 from json import dump
 from pathlib import Path
 
-from utils import get_path_relative
+from utils import get_path_relative, log
 
 
 def fetch_data():
     config = ExtractorConfig()
     service = GithubService(config)
 
-    print("Fetching data from GitHub API...")
+    log("Fetching data from GitHub API...")
     data = fetch_all(service)
 
     output_path = get_path_relative(Path(f"data/{config.repo_name()}.json"))
     with open(output_path, "w") as file:
         dump(data, file, indent=2)
 
-    print(f"Data saved to {output_path}")
+    log(f"Data saved to {output_path}")
 
 
 def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"):
-    print(f"Building graph from {input_file} using '{graph_type}' method...")
+    log(f"Building graph from {input_file} using '{graph_type}' method...")
 
     graph_methods = {
         "integrated": InteractionsDataFactory.build_integrated_weighted_graph,
@@ -49,12 +49,12 @@ def build_graph(input_file: str, output_dir: str, graph_type: str = "integrated"
     g = builder.get_graph(data)
 
     count = g.get_vertex_count()
-    print(f"Graph built with {count} vertices and {g.get_edge_count()} edges")
+    log(f"Graph built with {count} vertices and {g.get_edge_count()} edges")
 
     output_file = Path(f"{output_dir}/{Path(input_file).stem}/{graph_type}")
-    print(f"Exporting to {output_file}...")
+    log(f"Exporting to {output_file}...")
     g.export_to_gephi(output_file)
-    print("Export complete!")
+    log("Export complete!")
 
 
 def analyze_graph(
@@ -80,11 +80,11 @@ def analyze_graph(
     if not vertices_file or not vertices_file.exists():
         raise FileNotFoundError(f"Vertices file not found: {vertices_file}")
 
-    print("Analyzing graph from:")
-    print(f"  Edges: {edges_file}")
-    print(f"  Vertices: {vertices_file}")
-    print("  Using: AdjacencyListGraph representation")
-    print(f"  Strategy: {strategy}")
+    log("Analyzing graph from:")
+    log(f"  Edges: {edges_file}")
+    log(f"  Vertices: {vertices_file}")
+    log("  Using: AdjacencyListGraph representation")
+    log(f"  Strategy: {strategy}")
 
     graph = GraphFactory.from_gephi(edges_file, vertices_file, graph_type="list")
 
@@ -93,9 +93,9 @@ def analyze_graph(
     else:
         stats = ManualGraphStatistics(graph)
 
-    print("\nPre-calculating all metrics in parallel...")
+    log("\nPre-calculating all metrics in parallel...")
     stats.get_or_calculate_metrics(parallel=True)
-    print("✓ Metrics calculation complete!\n")
+    log("[OK] Metrics calculation complete!\n")
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -105,8 +105,8 @@ def analyze_graph(
 
     stats.export_metrics_to_csv(metrics_file)
 
-    print(f"\nMetrics exported to: {metrics_file}")
-    print("You can import this file into Gephi as node attributes!")
+    log(f"\nMetrics exported to: {metrics_file}")
+    log("You can import this file into Gephi as node attributes!")
 
 
 def main():

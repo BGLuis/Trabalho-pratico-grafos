@@ -4,6 +4,7 @@ from os import PathLike
 from typing import Dict, Set, List, Tuple, Any, Optional, Union
 
 from lib.abstract_graph import AbstractGraph
+from utils import log
 
 
 LoginExtractor = Callable[[Any], Optional[str]]
@@ -350,7 +351,7 @@ class GraphParser:
             self.__graph.add_edge(source_idx, target_idx)
             self.__graph.set_edge_weight(source_idx, target_idx, weight)
         except IndexError:
-            print(f"Erro ao adicionar aresta de {source_login} para {target_login}.")
+            log(f"Error adding edge from {source_login} to {target_login}.")
 
     def get_graph(self, data: InteractionsData) -> AbstractGraph:
         authors = data.authors

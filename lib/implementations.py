@@ -5,6 +5,7 @@ import csv
 
 from lib.abstract_graph import AbstractGraph
 from lib.common import Vertex
+from utils import log
 
 
 class AdjacencyGraphList(AbstractGraph):
@@ -58,7 +59,7 @@ class AdjacencyGraphList(AbstractGraph):
 
     def __check_vertex_index(self, u: int) -> None:
         if 0 > u or u >= len(self.__vertices):
-            raise IndexError(f"Índice de vértice {u} fora dos limites.")
+            raise IndexError(f"Vertex index {u} out of bounds.")
 
     def __check_edge_index(self, u: int, v: int) -> None:
         self.__check_vertex_index(u)
@@ -230,9 +231,9 @@ class AdjacencyGraphList(AbstractGraph):
                         if target_idx is not None:
                             f.write(f"{source_idx},{target_idx},{weight},Directed\n")
 
-            print(f"Graph exported to {file_vertexes} and {file_edges}")
+            log(f"Graph exported to {file_vertexes} and {file_edges}")
         except IOError as e:
-            print(f"Erro ao salvar os arquivos CSV: {e}")
+            log(f"Error saving CSV files: {e}")
 
 
 class AdjacencyMatrixGraph(AbstractGraph):
@@ -278,7 +279,7 @@ class AdjacencyMatrixGraph(AbstractGraph):
 
     def __check_vertex_index(self, v: int) -> None:
         if 0 > v or v >= self._num_vertices:
-            raise IndexError(f"Índice de vértice {v} fora dos limites.")
+            raise IndexError(f"Vertex index {v} out of bounds.")
 
     def __get_vertex(self, v: int) -> Vertex:
         self.__check_vertex_index(v)
@@ -428,6 +429,6 @@ class AdjacencyMatrixGraph(AbstractGraph):
                         if self.matriz[i][j] > 0:
                             f.write(f"{i},{j},{self.matriz[i][j]},Directed\n")
 
-            print(f"Graph exported to {file_vertexes} and {file_edges}")
+            log(f"Graph exported to {file_vertexes} and {file_edges}")
         except IOError as e:
-            print(f"Erro ao salvar os arquivos CSV: {e}")
+            log(f"Error saving CSV files: {e}")

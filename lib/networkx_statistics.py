@@ -5,6 +5,7 @@ import networkx as nx
 
 from lib.abstract_graph import AbstractGraph
 from lib.abstract_statistics import AbstractGraphStatistics
+from utils import log
 
 
 class NetworkXGraphStatistics(AbstractGraphStatistics):
@@ -58,7 +59,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
                 self._nx_graph, alpha=alpha, max_iter=max_iter, tol=tol, weight="weight"
             )
         except nx.PowerIterationFailedConvergence:
-            print("Warning: PageRank did not converge, using default values")
+            log("Warning: PageRank did not converge, using default values")
             return {
                 node: 1.0 / self._nx_graph.number_of_nodes()
                 for node in self._nx_graph.nodes()
@@ -72,7 +73,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
                 self._nx_graph, max_iter=max_iter, tol=tol, weight="weight"
             )
         except (nx.PowerIterationFailedConvergence, nx.NetworkXError):
-            print(
+            log(
                 "Warning: Eigenvector centrality did not converge, using default values"
             )
             return {
@@ -156,7 +157,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
     def calculate_all_metrics(
         self, parallel: bool = True
     ) -> Dict[str, Dict[int, float]]:
-        print("Calculating all metrics using NetworkX...")
+        log("Calculating all metrics using NetworkX...")
 
         metrics = {
             "degree_centrality": self.calculate_degree_centrality(),
@@ -169,15 +170,15 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
             "clustering_coefficient": self.calculate_clustering_coefficient(),
         }
 
-        print("  Calculating community metrics...")
+        log("  Calculating community metrics...")
         metrics["community"] = self.detect_communities()
         metrics["bridging_node"] = self.identify_bridging_nodes()
 
-        print("✓ All metrics calculated!")
+        log("[OK] All metrics calculated!")
         return metrics
 
     def export_metrics_to_csv(self, output_file: Path):
-        print(f"Exporting metrics to {output_file}...")
+        log(f"Exporting metrics to {output_file}...")
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
         metrics = self.get_or_calculate_metrics()
