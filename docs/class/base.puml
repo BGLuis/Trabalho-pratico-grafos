@@ -1,4 +1,4 @@
-@startuml base-classes
+@startuml base-class-diagram
 
 left to right direction
 
@@ -12,10 +12,16 @@ class Vertex {
     + set_weight(new_weight: float)
 }
 
-note right of Vertex
-  Vertex is used by both
-  AdjacencyGraphList and
-  AdjacencyMatrixGraph
-end note
+class Edge {
+    - __init__(source: Vertex, target: Vertex, weight: float = 1.0)
+
+    - __source : Vertex
+    - __target : Vertex
+    - __label : str
+    - __weight : float
+}
+
+Vertex o-- Edge
+Edge *-- Vertex
 
 @enduml

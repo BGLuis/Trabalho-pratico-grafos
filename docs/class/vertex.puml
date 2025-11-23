@@ -1,4 +1,4 @@
-@startuml vertex-class
+@startuml vertex-class-diagram
 
 class Vertex {
     - _label : str

@@ -1,4 +1,4 @@
-@startuml lib_class_diagram
+@startuml lib-class-diagram
 
 package lib {
     abstract class AbstractGraph {
