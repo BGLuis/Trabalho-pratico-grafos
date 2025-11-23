@@ -178,6 +178,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
 
     def export_metrics_to_csv(self, output_file: Path):
         print(f"Exporting metrics to {output_file}...")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
 
         metrics = self.get_or_calculate_metrics()
 

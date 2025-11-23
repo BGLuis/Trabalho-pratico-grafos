@@ -217,14 +217,12 @@ All metrics are available with both strategies (manual and networkx):
 - ✅ Parallelized algorithms (Betweenness, Closeness)
 - ✅ Optimized community detection with caching
 - ✅ Full control over implementation
-- ⚡ Best for production use
 
 **NetworkX Strategy:**
 - ✅ Battle-tested library algorithms
 - ✅ C-optimized implementations
 - ✅ Good for validation and comparison
 - ⚠️ Requires `networkx` library
-- 🔬 Best for development and testing
 
 #### Using Metrics in Gephi
 

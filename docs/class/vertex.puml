@@ -3,11 +3,19 @@
 class Vertex {
     - _label : str
     - _weight : float
+    --
     + __init__(label: str, weight: float)
     + get_label() : str
     + get_weight() : float
     + set_label(new_name: str)
     + set_weight(new_weight: float)
 }
+
+note bottom of Vertex
+  Simple vertex representation
+  with label and weight.
+  
+  Validates weight >= 0 in setter.
+end note
 
 @enduml

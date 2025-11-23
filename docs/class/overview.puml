@@ -1,0 +1,123 @@
+@startuml overview
+
+title Graph Analysis Project - High-Level Architecture
+
+left to right direction
+
+package "extractor" {
+    class GithubService {
+        + fetch_pull_requests()
+        + fetch_issues()
+    }
+    
+    class TokenManager {
+        + get_current_token()
+        + mark_rate_limited()
+    }
+    
+    class Requests {
+        + fetch_all()
+    }
+}
+
+package "lib" {
+    abstract class AbstractGraph {
+        + {abstract} get_vertex_count()
+        + {abstract} has_edge()
+        + {abstract} add_edge()
+        ...
+    }
+    
+    class AdjacencyGraphList {
+    }
+    
+    class AdjacencyMatrixGraph {
+    }
+    
+    class GraphFactory {
+        + from_gephi()
+    }
+    
+    class InteractionsDataFactory {
+        + build_integrated_weighted_graph()
+        + build_comments_graph()
+        + build_reviews_graph()
+        + build_closed_issues_graph()
+    }
+    
+    class GraphParser {
+        + get_graph()
+    }
+    
+    abstract class AbstractGraphStatistics {
+        + {abstract} calculate_degree_centrality()
+        + {abstract} calculate_betweenness_centrality()
+        + {abstract} calculate_pagerank()
+        ...
+    }
+    
+    class ManualGraphStatistics {
+        {note: Pure Python implementation\nwith parallelization}
+    }
+    
+    class NetworkXGraphStatistics {
+        {note: Requires numpy & scipy}
+    }
+}
+
+package "main" {
+    class CLI {
+        + fetch_command()
+        + build_command()
+        + analyze_command()
+    }
+}
+
+package "External Dependencies" {
+    class NetworkX {
+        {note: Optional for\nNetworkXGraphStatistics}
+    }
+    
+    class "NumPy/SciPy" {
+        {note: Required by NetworkX}
+    }
+}
+
+' Relationships
+GithubService --> Requests : used by
+Requests ..> "JSON Data" : produces
+
+"JSON Data" --> InteractionsDataFactory : consumed by
+InteractionsDataFactory --> GraphParser : provides data
+GraphParser --> AbstractGraph : creates
+
+GraphFactory --> AdjacencyGraphList : creates
+GraphFactory --> AdjacencyMatrixGraph : creates
+
+AbstractGraph <|-- AdjacencyGraphList
+AbstractGraph <|-- AdjacencyMatrixGraph
+
+AbstractGraphStatistics <|-- ManualGraphStatistics
+AbstractGraphStatistics <|-- NetworkXGraphStatistics
+AbstractGraphStatistics o-- AbstractGraph
+
+NetworkXGraphStatistics ..> NetworkX : uses
+NetworkX ..> "NumPy/SciPy" : requires
+
+CLI ..> GithubService : fetch
+CLI ..> InteractionsDataFactory : build
+CLI ..> AbstractGraphStatistics : analyze
+
+note top of ManualGraphStatistics
+  Default strategy
+  Zero external dependencies
+  Parallel algorithms for performance
+end note
+
+note top of NetworkXGraphStatistics
+  Alternative strategy
+  Requires pip install numpy scipy
+  Battle-tested algorithms
+end note
+
+@enduml

@@ -7,26 +7,29 @@ package extractor {
         - __tokens : List[str]
         - __current_index : int
         - __rate_limits : Dict[str, Optional[datetime]]
+        + __init__(tokens: List[str])
         + get_current_token() : str
         + mark_rate_limited(token: str, reset_at: Optional[datetime])
-        + get_next_available_token() : tuple[str, Optional[datetime]]
+        + get_next_available_token() : Tuple[str, Optional[datetime]]
     }
 
     class ExtractorConfig {
-        + auth_tokens() : List[str]
-        + base_url() : str
-        + repo_owner() : str
-        + repo_name() : str
+        + auth_tokens() : List[str] <<property>>
+        + base_url() : str <<property>>
+        + repo_owner() : str <<property>>
+        + repo_name() : str <<property>>
     }
 
     class Auth {
         - __token : str
+        + __init__(token: str)
         + __call__(r: PreparedRequest) : PreparedRequest
     }
 
     class PageResolver {
         + filename : str
         + key : str
+        + __init__(filename: str, key: str)
     }
 
     class GithubService {
@@ -36,6 +39,7 @@ package extractor {
         - __transport : RequestsHTTPTransport
         - __client : Client
         - __cache : CacheStore
+        + __init__(config: ExtractorConfig)
         - __switch_to_token(token: str)
         - __load_query_from_file(path: PathLike) : GraphQLRequest
         - __handle_rate_limit(log_tag: str) : bool
