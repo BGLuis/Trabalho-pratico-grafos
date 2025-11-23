@@ -74,5 +74,5 @@ class AbstractGraphStatistics(ABC):
         pass
 
     @abstractmethod
-    def export_metrics_to_csv(self, output_file: Path):
+    def export_metrics_to_csv(self, nodes_output_file: Path, graph_output_file: Path):
         pass

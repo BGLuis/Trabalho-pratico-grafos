@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from collections import deque, defaultdict
@@ -341,7 +342,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
     def detect_communities(self) -> Dict[int, int]:
         cached_key = self.__cache_store.get_statistic_cache_key(
-            graph_data=str(self.edges),
+            graph_data=self.__get_deterministic_cache_key(),
             metric_name="communities",
         )
         cached = self.__cache_store.get(cached_key)
@@ -458,7 +459,22 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         )
         return delta
 
+    def __get_deterministic_cache_key(self) -> str:
+        edges_tuple = tuple(
+            sorted((u, v, w) for u in self.edges for v, w in self.edges[u].items())
+        )
+        return str(edges_tuple)
+
     def calculate_modularity(self) -> float:
+        cached_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=self.__get_deterministic_cache_key(),
+            metric_name="modularity",
+        )
+        cached = self.__cache_store.get(cached_key)
+        if cached is not None:
+            log("Using cached modularity.")
+            return cached.get("modularity", 0.0)
+
         communities = self.detect_communities()
 
         total_weight = 0.0
@@ -488,7 +504,9 @@ class ManualGraphStatistics(AbstractGraphStatistics):
 
                 modularity += a_ij - (k_i * k_j) / (2 * total_weight)
 
-        return modularity / (2 * total_weight) if total_weight > 0 else 0.0
+        result = modularity / (2 * total_weight) if total_weight > 0 else 0.0
+        self.__cache_store.set(cached_key, {"modularity": result})
+        return result
 
     def identify_bridging_nodes(self) -> Dict[int, bool]:
         communities = self.detect_communities()
@@ -525,18 +543,21 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         calculated_metrics = submit_parallel_processes(metrics)
 
         calculated_metrics["bridging_node"] = self.identify_bridging_nodes()
+        log(f"  Density: {self.calculate_density()}")
+        log(f"  Assortativity: {self.calculate_assortativity()}")
+        log(f"  Modularity: {self.calculate_modularity()}")
         del calculated_metrics["community"]
 
         log("All metrics calculated!")
         return calculated_metrics
 
-    def export_metrics_to_csv(self, output_file: Path):
-        log(f"Exporting metrics to {output_file}...")
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+    def export_metrics_to_csv(self, nodes_output_file: Path, graph_output_file: Path):
+        log(f"Exporting metrics to {nodes_output_file}...")
+        nodes_output_file.parent.mkdir(parents=True, exist_ok=True)
 
         metrics = self.calculate_all_metrics(parallel=True)
 
-        with open(output_file, "w", encoding="utf-8", newline="") as f:
+        with open(nodes_output_file, "w", encoding="utf-8", newline="") as f:
             fields = list(metrics.keys())
             fields.sort()
             fields = ["Id", "Label"] + fields
@@ -556,3 +577,13 @@ class ManualGraphStatistics(AbstractGraphStatistics):
                     row[metric_name] = value
 
                 writer.writerow(row)
+
+        with open(graph_output_file, "w", encoding="utf-8") as f:
+            json.dumps(
+                {
+                    "density": self.calculate_density(),
+                    "assortativity": self.calculate_assortativity(),
+                    "modularity": self.calculate_modularity(),
+                },
+                f,
+            )

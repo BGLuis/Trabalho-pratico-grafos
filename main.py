@@ -102,11 +102,12 @@ def analyze_graph(
     output_path = Path(f"{output_dir}/{strategy}/{base_name}")
     output_path.mkdir(parents=True, exist_ok=True)
 
-    metrics_file = output_path / f"{process_type}.csv"
+    nodes_metrics_file = output_path / f"{process_type}/nodes.csv"
+    graph_metrics_file = output_path / f"{process_type}/graph.json"
 
-    stats.export_metrics_to_csv(metrics_file)
+    stats.export_metrics_to_csv(nodes_metrics_file, graph_metrics_file)
 
-    log(f"\nMetrics exported to: {metrics_file}")
+    log(f"\nMetrics exported to: {nodes_metrics_file}")
     log("You can import this file into Gephi as node attributes!")
 
 

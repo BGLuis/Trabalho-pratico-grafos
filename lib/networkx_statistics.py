@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 from typing import Dict
 import networkx as nx
@@ -97,15 +98,8 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
             return 0.0
 
     def detect_communities(self) -> Dict[int, int]:
-        edges_tuple = tuple(
-            sorted(
-                (u, v, d.get("weight", 1.0))
-                for u, v, d in self._nx_graph.edges(data=True)
-            )
-        )
-
         cached_key = self.__cache_store.get_statistic_cache_key(
-            graph_data=str(edges_tuple),
+            graph_data=self.__get_deterministic_cache_key(),
             metric_name="detect_communities",
             params=None,
         )
@@ -127,7 +121,25 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
         self.__cache_store.set(cached_key, community_map)
         return community_map
 
+    def __get_deterministic_cache_key(self) -> str:
+        edges_tuple = tuple(
+            sorted(
+                (u, v, d.get("weight", 1.0))
+                for u, v, d in self._nx_graph.edges(data=True)
+            )
+        )
+        return str(edges_tuple)
+
     def calculate_modularity(self) -> float:
+        cached_key = self.__cache_store.get_statistic_cache_key(
+            graph_data=self.__get_deterministic_cache_key(),
+            metric_name="modularity",
+        )
+        cached = self.__cache_store.get(cached_key)
+        if cached is not None:
+            log("Using cached modularity.")
+            return cached["modularity"]
+
         communities = self.detect_communities()
         undirected = self._nx_graph.to_undirected()
 
@@ -179,18 +191,21 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
         calculated_metrics = submit_parallel_processes(metrics)
 
         calculated_metrics["bridging_node"] = self.identify_bridging_nodes()
+        log(f"  Density: {self.calculate_density()}")
+        log(f"  Assortativity: {self.calculate_assortativity()}")
+        log(f"  Modularity: {self.calculate_modularity()}")
         del calculated_metrics["community"]
 
         log("[OK] All metrics calculated!")
         return calculated_metrics
 
-    def export_metrics_to_csv(self, output_file: Path):
-        log(f"Exporting metrics to {output_file}...")
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+    def export_metrics_to_csv(self, nodes_output_file: Path, graph_output_file: Path):
+        log(f"Exporting metrics to {nodes_output_file}...")
+        nodes_output_file.parent.mkdir(parents=True, exist_ok=True)
 
         metrics = self.calculate_all_metrics()
 
-        with open(output_file, "w", encoding="utf-8", newline="") as f:
+        with open(nodes_output_file, "w", encoding="utf-8", newline="") as f:
             fields = list(metrics.keys())
             fields.sort()
             fields = ["Id", "Label"] + fields
@@ -211,3 +226,13 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
                     row[metric_name] = value
 
                 writer.writerow(row)
+
+        with open(graph_output_file, "w", encoding="utf-8") as f:
+            json.dumps(
+                {
+                    "density": self.calculate_density(),
+                    "assortativity": self.calculate_assortativity(),
+                    "modularity": self.calculate_modularity(),
+                },
+                f,
+            )
