@@ -555,7 +555,7 @@ class ManualGraphStatistics(AbstractGraphStatistics):
         log(f"Exporting metrics to {nodes_output_file}...")
         nodes_output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        metrics = self.calculate_all_metrics(parallel=True)
+        metrics = self.calculate_all_metrics()
 
         with open(nodes_output_file, "w", encoding="utf-8", newline="") as f:
             fields = list(metrics.keys())
