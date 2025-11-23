@@ -228,7 +228,7 @@ class NetworkXGraphStatistics(AbstractGraphStatistics):
                 writer.writerow(row)
 
         with open(graph_output_file, "w", encoding="utf-8") as f:
-            json.dumps(
+            json.dump(
                 {
                     "density": self.calculate_density(),
                     "assortativity": self.calculate_assortativity(),
