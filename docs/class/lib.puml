@@ -1,0 +1,129 @@
+@startuml lib_class_diagram
+
+package lib {
+    abstract class AbstractGraph {
+        + {abstract} get_vertex_count() : int
+        + {abstract} get_edge_count() : int
+        + {abstract} has_edge(u: int, v: int) : bool
+        + {abstract} add_edge(u: int, v: int)
+        + {abstract} remove_edge(u: int, v: int)
+        + {abstract} is_successor(u: int, v: int) : bool
+        + {abstract} is_predecessor(u: int, v: int) : bool
+        + {abstract} is_divergent(u1: int, v1: int, u2: int, v2: int) : bool
+        + {abstract} is_convergent(u1: int, v1: int, u2: int, v2: int) : bool
+        + {abstract} is_incident(u: int, v: int, x: int) : bool
+        + {abstract} get_vertex_in_degree(u: int) : int
+        + {abstract} get_vertex_out_degree(u: int) : int
+        + {abstract} set_vertex_weight(v: int, w: float)
+        + {abstract} get_vertex_weight(v: int) : float
+        + {abstract} get_vertex_label(v: int) : str
+        + {abstract} set_vertex_label(v: int, label: str)
+        + {abstract} set_edge_weight(u: int, v: int, w: float)
+        + {abstract} get_edge_weight(u: int, v: int) : float
+        + {abstract} is_connected() : bool
+        + {abstract} is_empty_graph() : bool
+        + {abstract} is_complete_graph() : bool
+        + {abstract} export_to_gephi(path: PathLike)
+    }
+
+    class Vertex {
+        - _label : str
+        - _weight : float
+        + get_label() : str
+        + get_weight() : float
+        + set_label(new_name: str)
+        + set_weight(new_weight: float)
+    }
+
+    class AdjacencyGraphList {
+        - __vertices : List[Vertex]
+        - __adjacency_lists : List[List[Tuple[Vertex, float]]]
+    }
+
+    class AdjacencyMatrixGraph {
+        - _num_vertices : int
+        - _vertices : List[Vertex]
+        - matriz : List[List[float]]
+    }
+
+    class ExtractorConfig {
+        - __key : str
+        - __logins : List[LoginExtractor]
+        - __interactions : List[InteractionExtractor]
+        + key : str
+        + logins : List[LoginExtractor]
+        + interactions : List[InteractionExtractor]
+    }
+
+    class InteractionsData {
+        - __logins : Set[str]
+        - __interactions : Dict[str, Set[str]]
+        - __weights : Dict[Tuple[str, str], float]
+        + add_login(login: str)
+        + add_interaction(source: str, target: str, weight: Optional[float])
+        + get_weight(source: str, target: str) : float
+        + authors : Set[str]
+        + interactions : Dict[str, Set[str]]
+    }
+
+    class InteractionsDataFactory {
+        + {static} build_from_extractors(file_path: Union[str, PathLike], extractors: List[ExtractorConfig]) : InteractionsData
+        + {static} build_closed_issues_graph(file_path: str) : InteractionsData
+        + {static} build_approve_merge_revision_pull_requests_graph(file_path: str) : InteractionsData
+        + {static} build_comments_pull_requests_issues_graph(file_path: str) : InteractionsData
+        + {static} build_integrated_weighted_graph(file_path: str) : InteractionsData
+    }
+
+    class GraphParser {
+        - __mapper : Dict[str, int]
+        - __graph_factory : Callable[[int], AbstractGraph]
+        - __graph : AbstractGraph | None
+        + get_graph(data: InteractionsData) : AbstractGraph
+    }
+
+    class GraphStatistics {
+        + graph : AbstractGraph
+        - nodes : Set[int]
+        - edges : Dict[int, Dict[int, float]]
+        - in_edges : Dict[int, Dict[int, float]]
+        - node_weights : Dict[int, float]
+        - vertex_labels : Dict[int, str]
+        - _metrics_cache : Dict[str, Dict[int, float]]
+        + {static} from_csv(edges_file: Path, vertices_file: Path, graph_type: str) : GraphStatistics
+        + calculate_degree_centrality() : Dict[int, float]
+        + calculate_in_degree_centrality() : Dict[int, float]
+        + calculate_out_degree_centrality() : Dict[int, float]
+        + calculate_betweenness_centrality(parallel: bool) : Dict[int, float]
+        + calculate_closeness_centrality(parallel: bool) : Dict[int, float]
+        + calculate_pagerank(alpha: float, max_iter: int, tol: float) : Dict[int, float]
+        + calculate_eigenvector_centrality(max_iter: int, tol: float) : Dict[int, float]
+        + calculate_density() : float
+        + calculate_clustering_coefficient() : Dict[int, float]
+        + calculate_average_clustering() : float
+        + calculate_assortativity() : float
+        + detect_communities() : Dict[int, int]
+        + calculate_modularity() : float
+        + identify_bridging_nodes() : Dict[int, bool]
+        + get_or_calculate_metrics(parallel: bool) : Dict[str, Dict[int, float]]
+        + calculate_all_metrics(parallel: bool) : Dict[str, Dict[int, float]]
+        + export_metrics_to_csv(output_file: Path)
+    }
+
+    AbstractGraph <|-- AdjacencyGraphList
+    AbstractGraph <|-- AdjacencyMatrixGraph
+    AdjacencyGraphList *-- Vertex : contains
+    AdjacencyMatrixGraph *-- Vertex : contains
+
+    InteractionsDataFactory ..> InteractionsData : creates
+    InteractionsDataFactory ..> ExtractorConfig : uses
+    
+    GraphParser ..> InteractionsData : uses
+    GraphParser ..> AbstractGraph : creates
+    GraphParser o-- AbstractGraph : contains
+
+    GraphStatistics o-- AbstractGraph : contains
+    GraphStatistics ..> AdjacencyGraphList : creates in from_csv
+    GraphStatistics ..> AdjacencyMatrixGraph : creates in from_csv
+}
+
+@enduml

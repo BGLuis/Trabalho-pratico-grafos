@@ -1,0 +1,25 @@
+@startuml base-classes
+
+left to right direction
+
+class Vertex {
+    - __init__(label: str, weight: float)
+
+    - __label : str
+    - __weight : float
+    - __edges : Edge[]
+}
+
+class Edge {
+    - __init__(source: Vertex, target: Vertex, weight: float = 1.0)
+
+    - __source : Vertex
+    - __target : Vertex
+    - __label : str
+    - __weight : float
+}
+
+Vertex o-- Edge
+Edge *-- Vertex
+
+@enduml

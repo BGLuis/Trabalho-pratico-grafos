@@ -1,0 +1,79 @@
+@startuml extractor_class_diagram
+
+left to right direction
+
+package extractor {
+    class TokenManager {
+        - __tokens : List[str]
+        - __current_index : int
+        - __rate_limits : Dict[str, Optional[datetime]]
+        + get_current_token() : str
+        + mark_rate_limited(token: str, reset_at: Optional[datetime])
+        + get_next_available_token() : tuple[str, Optional[datetime]]
+    }
+
+    class ExtractorConfig {
+        + auth_tokens() : List[str]
+        + base_url() : str
+        + repo_owner() : str
+        + repo_name() : str
+    }
+
+    class Auth {
+        - __token : str
+        + __call__(r: PreparedRequest) : PreparedRequest
+    }
+
+    class PageResolver {
+        + filename : str
+        + key : str
+    }
+
+    class GithubService {
+        - __config : ExtractorConfig
+        - __base_url : str
+        - __token_manager : TokenManager
+        - __transport : RequestsHTTPTransport
+        - __client : Client
+        - __cache : CacheStore
+        - __switch_to_token(token: str)
+        - __load_query_from_file(path: PathLike) : GraphQLRequest
+        - __handle_rate_limit(log_tag: str) : bool
+        - __execute_query_with_retry(log_tag: str, query: GraphQLRequest, use_cache: bool) : Dict[str, Any]
+        - __calculate_missing(total_count: int, current_count: int) : int
+        - __fetch_paginated(filename: str, extract_data: Callable, extra_variables: Dict, initial_list: List) : List[Any]
+        - __resolve_missing(data: List[Dict], resolvers: List[PageResolver], get_config: Callable) : List[Dict]
+        + clear_cache()
+        + fetch_pull_requests() : List[Dict]
+        + fetch_issues() : List[Dict]
+    }
+
+    class Requests {
+        + {static} fetch_all(service: GithubService) : Dict[str, List[Any]]
+    }
+
+    GithubService *-- TokenManager : contains
+    GithubService *-- ExtractorConfig : contains
+    GithubService *-- CacheStore : contains
+    GithubService o-- RequestsHTTPTransport : contains
+    GithubService o-- Client : contains
+    GithubService ..> Auth : creates
+    GithubService ..> PageResolver : uses
+    GithubService ..> GraphQLRequest : uses
+    Requests ..> GithubService : uses
+    Auth --|> AuthBase : extends
+    RequestsHTTPTransport ..> Auth : uses
+}
+
+package utils {
+    class CacheStore {
+        - __cache_dir : Path
+        + __init__(namespace: str)
+        + get_cache_key(query: Any, variables: Dict) : str
+        + get(cache_key: str) : Dict | None
+        + set(cache_key: str, data: Dict)
+        + clear()
+    }
+}
+
+@enduml

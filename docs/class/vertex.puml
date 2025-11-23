@@ -1,0 +1,10 @@
+@startuml base-classes
+
+class Vertex {
+    - __init__(label: str, weight: float)
+
+    - __label : str
+    - __weight : float
+}
+
+@enduml
