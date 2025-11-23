@@ -69,16 +69,6 @@ uv sync
 uvx pre-commit install
 ```
 
-### Optional: NetworkX Strategy
-
-If you want to use the NetworkX strategy for graph analysis (useful for validation and comparison):
-
-```bash
-uv pip install networkx
-```
-
-Note: The default `manual` strategy requires no external dependencies.
-
 ## Architecture
 
 This project implements several design patterns for maintainability and extensibility:
@@ -183,10 +173,11 @@ Options:
 - `-o, --output`: Output directory for statistics (default: `statistics`)
 - `-s, --strategy`: Calculation strategy (default: `manual`)
   - `manual`: Custom parallel algorithms, no external dependencies (except Python stdlib)
-  - `networkx`: NetworkX library wrapper, requires `pip install networkx`
+  - `networkx`: NetworkX library wrapper, requires `numpy` and `scipy` 
 
 **Performance:** 
-- **Manual strategy:** Metrics calculated in parallel using multiple threads, 3-4x speedup on graphs with 50+ nodes
+- **Manual strategy:** Metrics calculated in parallel using multiple threads and processes
+
 #### Metrics Calculated
 
 All metrics are available with both strategies (manual and networkx):
@@ -210,23 +201,9 @@ All metrics are available with both strategies (manual and networkx):
 - **Modularity**: Quality of community structure (Newman-Girvan formula)
 - **Bridging Nodes**: Users connecting different communities
 
-#### Strategy Comparison
-
-**Manual Strategy (default):**
-- ✅ Zero dependencies (only Python stdlib)
-- ✅ Parallelized algorithms (Betweenness, Closeness)
-- ✅ Optimized community detection with caching
-- ✅ Full control over implementation
-
-**NetworkX Strategy:**
-- ✅ Battle-tested library algorithms
-- ✅ C-optimized implementations
-- ✅ Good for validation and comparison
-- ⚠️ Requires `networkx` library
-
 #### Using Metrics in Gephi
 
-The generated CSV file (`statistics/{graph_name}_metrics.csv`) can be imported into Gephi:
+The generated CSV file (`statistics/{strategy}/{graph_name}/{graph_type}/nodes.csv`) can be imported into Gephi:
 
 1. Open your graph in Gephi
 2. Go to Data Laboratory
