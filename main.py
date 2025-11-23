@@ -83,7 +83,9 @@ def analyze_graph(input_dir: str, output_dir: str = "statistics"):
 
     stats = GraphStatistics.from_csv(edges_file, vertices_file, graph_type="list")
 
-    stats.print_summary_statistics()
+    print("\nPre-calculating all metrics in parallel...")
+    stats.get_or_calculate_metrics(parallel=True)
+    print("✓ Metrics calculation complete!\n")
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)

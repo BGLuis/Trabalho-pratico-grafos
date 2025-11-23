@@ -16,6 +16,7 @@ class GraphStatistics:
         self.in_edges: Dict[int, Dict[int, float]] = defaultdict(dict)
         self.node_weights: Dict[int, float] = {}
         self.vertex_labels: Dict[int, str] = {}
+        self._metrics_cache: Dict[str, Dict[int, float]] = {}
         self._load_from_graph()
 
     @classmethod
@@ -546,6 +547,15 @@ class GraphStatistics:
 
         return bridging
 
+    def get_or_calculate_metrics(
+        self, parallel: bool = True
+    ) -> Dict[str, Dict[int, float]]:
+        if self._metrics_cache:
+            return self._metrics_cache
+
+        self._metrics_cache = self.calculate_all_metrics(parallel)
+        return self._metrics_cache
+
     def calculate_all_metrics(
         self, parallel: bool = True
     ) -> Dict[str, Dict[int, float]]:
@@ -622,7 +632,7 @@ class GraphStatistics:
     def export_metrics_to_csv(self, output_file: Path):
         print(f"Exporting metrics to {output_file}...")
 
-        metrics = self.calculate_all_metrics()
+        metrics = self.get_or_calculate_metrics()
 
         with open(output_file, "w", encoding="utf-8", newline="") as f:
             fieldnames = ["Id", "Label"] + list(metrics.keys())
@@ -642,72 +652,3 @@ class GraphStatistics:
                     row[metric_name] = value
 
                 writer.writerow(row)
-
-    def print_summary_statistics(self):
-        print("\n" + "=" * 80)
-        print("NETWORK STATISTICS SUMMARY")
-        print("=" * 80)
-
-        print("\n--- Basic Network Info ---")
-        num_nodes = len(self.nodes)
-        num_edges = sum(len(targets) for targets in self.edges.values())
-        print(f"Number of nodes: {num_nodes}")
-        print(f"Number of edges: {num_edges}")
-
-        print("\n--- Structure and Cohesion Metrics ---")
-        density = self.calculate_density()
-        avg_clustering = self.calculate_average_clustering()
-        assortativity = self.calculate_assortativity()
-
-        print(f"Density: {density:.4f}")
-        print(f"Average clustering coefficient: {avg_clustering:.4f}")
-        print(f"Assortativity: {assortativity:.4f}")
-
-        if density > 0.5:
-            print("  Dense network: High overall collaboration")
-        else:
-            print("  Sparse network: Punctual connections")
-
-        if assortativity > 0:
-            print("  Assortative: Influential users connect with each other")
-        elif assortativity < 0:
-            print("  Disassortative: Influential users lead groups of newcomers")
-
-        print("\n--- Community Metrics ---")
-        communities = self.detect_communities()
-        num_communities = len(set(communities.values()))
-        modularity = self.calculate_modularity()
-
-        print(f"Number of communities detected: {num_communities}")
-        print(f"Modularity: {modularity:.4f}")
-
-        bridging = self.identify_bridging_nodes()
-        num_bridges = sum(1 for is_bridge in bridging.values() if is_bridge)
-        print(f"Number of bridging nodes: {num_bridges}")
-
-        print("\n--- Top 10 Contributors by Different Metrics ---")
-
-        degree = self.calculate_degree_centrality()
-        top_degree = sorted(degree.items(), key=lambda x: x[1], reverse=True)[:10]
-        print("\nTop by Degree Centrality (most active):")
-        for i, (node, value) in enumerate(top_degree, 1):
-            label = self.vertex_labels.get(node, f"Node{node}")
-            print(f"  {i}. {label}: {value:.4f}")
-
-        betweenness = self.calculate_betweenness_centrality()
-        top_betweenness = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[
-            :10
-        ]
-        print("\nTop by Betweenness Centrality (bridges):")
-        for i, (node, value) in enumerate(top_betweenness, 1):
-            label = self.vertex_labels.get(node, f"Node{node}")
-            print(f"  {i}. {label}: {value:.4f}")
-
-        pagerank = self.calculate_pagerank()
-        top_pagerank = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
-        print("\nTop by PageRank (most influential):")
-        for i, (node, value) in enumerate(top_pagerank, 1):
-            label = self.vertex_labels.get(node, f"Node{node}")
-            print(f"  {i}. {label}: {value:.4f}")
-
-        print("\n" + "=" * 80)
