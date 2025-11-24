@@ -123,12 +123,10 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
-    # Fetch command
     subparsers.add_parser(
         "fetch", help="Fetch data from GitHub API and save to JSON file"
     )
 
-    # Build command
     build_parser = subparsers.add_parser(
         "build", help="Build graph from JSON file and export to Gephi format"
     )
