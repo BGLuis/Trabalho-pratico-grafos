@@ -7,6 +7,7 @@ This project uses `uv` for dependency management and `git-lfs` for handling larg
 ### 1. Install uv
 
 **Linux (Arch):**
+
 ```bash
 sudo pacman -S uv
 # or
@@ -14,17 +15,20 @@ yay -S uv
 ```
 
 **Linux (Ubuntu/Debian) & macOS:**
+
 ```bash
 # Using the official installer script
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **macOS (Homebrew):**
+
 ```bash
 brew install uv
 ```
 
 **Windows:**
+
 ```powershell
 # Using PowerShell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
@@ -38,6 +42,7 @@ For other systems, check [uv documentation](https://docs.astral.sh/uv/getting-st
 ## Features
 
 ✨ **Key Features:**
+
 - **GitHub Data Extraction**: Fetch issues, PRs, comments, and reviews via GraphQL API
 - **Multiple Graph Types**: Build different interaction graphs (comments, reviews, integrated)
 - **Flexible Graph Storage**: Choose between adjacency list or matrix representation
@@ -78,10 +83,8 @@ This project implements several design patterns for maintainability and extensib
 - **Strategy Pattern**: Two interchangeable algorithms for statistics calculation
   - `ManualGraphStatistics`: Custom implementations with parallelization
   - `NetworkXGraphStatistics`: NetworkX library wrapper
-  
 - **Factory Pattern**: `GraphFactory` creates graph instances from different sources
   - `from_gephi()`: Load from Gephi CSV format
-  
 - **Abstract Factory**: Graph implementations through `AbstractGraph` interface
   - `AdjacencyGraphList`: List-based representation (efficient for sparse graphs)
   - `AdjacencyMatrixGraph`: Matrix-based representation (efficient for dense graphs)
@@ -131,6 +134,7 @@ uv run main.py build -t integrated  # default
 ```
 
 Options:
+
 - `-i, --input`: Input JSON file path (default: `data/node.json`)
 - `-o, --output`: Output directory for Gephi files (default: `tables/`)
 - `-t, --type`: Graph type to build (default: `integrated`)
@@ -142,6 +146,7 @@ Options:
 #### Graph Types Explained
 
 **Integrated (default)**: Combines all interaction types with weighted edges:
+
 - Comment on issue/PR: weight 2
 - Issue opened and commented: weight 3
 - PR review/approval: weight 4
@@ -169,13 +174,15 @@ uv run main.py analyze -i tables/node/integrated -o my_statistics
 ```
 
 Options:
+
 - `-i, --input`: Input graph directory or base path (required)
 - `-o, --output`: Output directory for statistics (default: `statistics`)
 - `-s, --strategy`: Calculation strategy (default: `manual`)
   - `manual`: Custom parallel algorithms, no external dependencies (except Python stdlib)
-  - `networkx`: NetworkX library wrapper, requires `numpy` and `scipy` 
+  - `networkx`: NetworkX library wrapper, requires `numpy` and `scipy`
 
-**Performance:** 
+**Performance:**
+
 - **Manual strategy:** Metrics calculated in parallel using multiple threads and processes
 
 #### Metrics Calculated
@@ -183,6 +190,7 @@ Options:
 All metrics are available with both strategies (manual and networkx):
 
 **Centrality Metrics:**
+
 - **Degree Centrality**: Number of direct connections (participation level)
 - **In-Degree Centrality**: Who receives interactions
 - **Out-Degree Centrality**: Who initiates interactions
@@ -192,11 +200,13 @@ All metrics are available with both strategies (manual and networkx):
 - **Eigenvector Centrality**: Influence based on connection quality
 
 **Structure and Cohesion Metrics:**
+
 - **Density**: Proportion of existing vs. possible connections
 - **Clustering Coefficient**: Tendency to form clusters (per node and average)
 - **Assortativity**: Whether highly connected nodes connect with each other (Pearson correlation)
 
 **Community Metrics:**
+
 - **Community Detection**: Identify groups working together (Greedy modularity optimization)
 - **Modularity**: Quality of community structure (Newman-Girvan formula)
 - **Bridging Nodes**: Users connecting different communities
@@ -224,3 +234,11 @@ uv run main.py fetch --help
 uv run main.py build --help
 uv run main.py analyze --help
 ```
+
+### Artifacts
+
+The presenting video can be accessed at: [video](./docs/apresentacao.mp4)
+
+The LaTeX source can be accessed at: [LaTeX source](./docs/LaTeX/main.tex)
+
+The processed LaTeX can be accessed at: [processed LaTeX](./docs/LaTeX/main.pdf)
